@@ -2,16 +2,15 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MAGIS TV Smart - Simulador PC</title>
-    
-    <!-- Librerías Externas -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#0a0c10">
+    <title>MAGIS Tube · Smart TV</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Forzar modo clásico de Babel -->
+
     <script>
         if (typeof Babel !== 'undefined') {
             Babel.registerPreset('react-classic', {
@@ -19,643 +18,948 @@
             });
         }
     </script>
-    
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@700&display=swap" rel="stylesheet">
 
     <style>
-        body { 
-            background-color: #05070a; 
-            color: white; 
-            font-family: 'Inter', sans-serif; 
-            overflow: hidden; 
-            margin: 0;
-            padding: 0;
-            width: 100vw;
-            height: 100vh;
+        :root {
+            --bg: #0a0c10;
+            --bg2: #0e1118;
+            --card: #151a24;
+            --accent: #E50914;
+            --focus-ring: 0 0 0 4px rgba(229,9,20,0.45), 0 0 24px rgba(229,9,20,0.35);
         }
 
-        /* Estilo de enfoque para control remoto o teclado en PC */
-        .tv-focusable {
-            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .tv-focusable:focus, .tv-focusable.focused, .tv-focusable:hover {
-            outline: none;
-            transform: scale(1.01);
-            border: 2px solid #E50914 !important;
-            box-shadow: 0 0 20px rgba(229, 9, 20, 0.8);
-            z-index: 50;
-            background-color: #1f2937 !important;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            background: var(--bg);
+            color: #fff;
+            font-family: 'Inter', system-ui, sans-serif;
+            height: 100%;
+            overflow: hidden; /* TV: no page scroll, sections scroll internally */
+            -webkit-user-select: none;
+            user-select: none;
+            cursor: none; /* hide cursor on pure TV */
         }
 
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0c101d; }
-        ::-webkit-scrollbar-thumb { background: #374151; border-radius: 3px; }
+        /* Show cursor only when mouse is used */
+        body.mouse-active { cursor: default; }
+        body.mouse-active * { cursor: default; }
+
+        /* Overscan safe area for TVs (5% margin) */
+        .tv-safe {
+            padding: 3vh 3vw;
+        }
+
+        /* ===== FOCUS SYSTEM (core of remote control) ===== */
+        :focus { outline: none; }
+
+        .focusable:focus,
+        button:focus,
+        [tabindex="0"]:focus,
+        select:focus,
+        input:focus {
+            outline: none !important;
+            box-shadow: var(--focus-ring) !important;
+            transform: scale(1.05);
+            z-index: 20;
+            position: relative;
+        }
+
+        .nav-item:focus {
+            background: rgba(229,9,20,0.18) !important;
+            color: #fff !important;
+            border-left-color: var(--accent) !important;
+            transform: none;
+        }
+
+        .card-tv:focus {
+            transform: scale(1.08);
+            box-shadow: var(--focus-ring), 0 12px 40px rgba(0,0,0,0.5);
+        }
+
+        .channel-row:focus {
+            background: rgba(229,9,20,0.2) !important;
+            border-color: var(--accent) !important;
+            transform: scale(1.02);
+        }
+
+        .ep-row:focus {
+            background: rgba(229,9,20,0.22) !important;
+            border-color: rgba(229,9,20,0.5) !important;
+        }
+
+        /* Scrollbars thin */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #2a3142; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
         .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .no-scrollbar { scrollbar-width: none; }
+
+        /* Animations */
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+        @keyframes equalize {
+            0% { transform: scaleY(.25); opacity:.5; }
+            100% { transform: scaleY(1); opacity:1; }
+        }
+
+        .animate-fade-in { animation: fadeIn .3s ease-out; }
+        .animate-slide-up { animation: slideUp .4s ease-out; }
+
+        .text-gold {
+            background: linear-gradient(90deg,#BF953F,#FCF6BA,#B38728,#FBF5B7,#AA771C);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .bar {
+            width: 3px; background: var(--accent); border-radius: 2px;
+            animation: equalize .85s infinite alternate; transform-origin: bottom;
+        }
+        .bar:nth-child(1){animation-delay:-.2s}
+        .bar:nth-child(2){animation-delay:-.4s}
+        .bar:nth-child(3){animation-delay:-.6s}
+        .bar:nth-child(4){animation-delay:-.8s}
+
+        /* Player */
+        .player-box iframe { width:100%; height:100%; border:0; background:#000; }
+
+        /* Layout TV: fixed sidebar always visible */
+        .tv-layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        .tv-sidebar {
+            width: 110px;
+            flex-shrink: 0;
+            background: #0c0e14;
+            border-right: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 0;
+            z-index: 50;
+        }
+
+        .tv-main {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Grid of cards - larger for TV */
+        .tv-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            padding: 8px 4px 40px;
+        }
+
+        @media (min-width: 1280px) {
+            .tv-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px; }
+        }
+        @media (min-width: 1600px) {
+            .tv-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 28px; }
+        }
     </style>
 </head>
 <body>
     <div id="root">
-        <div style="display:flex; height:100vh; width:100vw; align-items:center; justify-content:center; background:#05070a; color:white; flex-direction:column; font-family:sans-serif;">
-            <div style="width:50px; height:50px; border:5px solid #E50914; border-top-color:transparent; border-radius:50%; animation:spin 1s linear infinite; margin-bottom:20px;"></div>
-            <h2 style="font-size: 24px; font-weight: bold;">Cargando MAGIS TV Smart...</h2>
-            <style>@keyframes spin { 100% { transform: rotate(360deg); } }</style>
+        <div style="display:flex;height:100vh;width:100vw;align-items:center;justify-content:center;background:#0a0c10;flex-direction:column;gap:16px;">
+            <div style="width:48px;height:48px;border:4px solid #E50914;border-top-color:transparent;border-radius:50%;animation:spin .9s linear infinite;"></div>
+            <p style="font-size:1.15rem;font-weight:600;color:#fff;">Cargando MAGIS Tube...</p>
         </div>
     </div>
 
     <script type="text/babel" data-presets="react-classic">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect, useRef, useMemo, useCallback } = React;
 
-        const STATIC_MOVIES = [
-            { "titulo": "1923 - El Hombre Mosca", "descripcion": "Un joven de campo recién llegado a la ciudad debe tratar de escalar un edificio de 12 pisos.", "imagen": "https://m.media-amazon.com/images/M/MV5BM2EzYzA2NTgtODQzYy00N2UwLWE0ZGYtMDU3YmYwZTFlOTA5XkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1y9OJY2Se0PJdiUjIL-fcA32TszqwDaRd/view?usp=sharing", "codigo": null },
-            { "titulo": "La Laguna Azul (1980)", "descripcion": "Dos niños que sobreviven a un naufragio, llegan a una isla tropical y crecen.", "imagen": "https://m.media-amazon.com/images/M/MV5BMTQ4ZjJlMjktYzA4My00MzJjLWIxNTAtZjhjYWQwYmNlNjE3XkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1eSZglGEJgj_lQtBkuC4FrnywqLFJUTvG/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Caligula (1979)", "descripcion": "Drama de alto contenido erótico que narra el ascenso y caída del emperador romano Calígula.", "imagen": "https://m.media-amazon.com/images/M/MV5BYjllZjhiZWUtMTM1OC00YWJkLWJkOWUtMWZlNzBhNjM2M2QxXkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1ITEdxgIrOSNHTCjUgqAFnsIiVRl_sm1G/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Tiburón 1975", "descripcion": "En la costa de un pequeño pueblo, un enorme tiburón blanco ataca a varias personas.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/db9eb3024ee3109c0345bdac8575df43989b81e457d26ab7895dbadee66a2b99.jpg", "urlDrive": "https://drive.google.com/file/d/1tGa2AjZYx8neW6e6z5wgc-zC5g0geQkP/view?usp=sharing", "codigo": null },
-            { "titulo": "Naranja mecánica (1971)", "descripcion": "Alex es un joven muy agresivo que tiene dos pasiones: la violencia y Beethoven.", "imagen": "https://m.media-amazon.com/images/M/MV5BYjFiN2E5N2ItZjc1Yy00MzZmLThmZGQtNGIyYjljMzk1NmU4XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/1ZJ2L0x5EzI3_lJ3c13Q2hBRNa5Askza2/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Machete", "descripcion": "Machete es un ex federal mexicano que posee extraordinarias habilidades.", "imagen": "https://m.media-amazon.com/images/M/MV5BZTY0OTZmYTMtMjhmOC00NzM3LTk2Y2MtMDg1ODNlOTkyNTcwXkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1oB1Um9GJK8mM2apNqa9tFgNtVY1H5RyI/view?usp=sharing", "codigo": null },
-            { "titulo": "La mosca (1986)", "descripcion": "Un científico se utiliza a sí mismo como cobaya en un complejo experimento.", "imagen": "https://image.tmdb.org/t/p/original/mmJLkVX8CVRFVFnfRvjirzX16Oy.jpg", "urlDrive": "https://drive.google.com/file/d/1fJbsO9h6AnXf653IWHEilv249BugOPKD/view?usp=sharing", "codigo": null },
-            { "titulo": "Escalofríos (Pesadillas)", "descripcion": "Serie antológica de terror dirigida a la audiencia juvenil e infantil.", "imagen": "https://m.media-amazon.com/images/M/MV5BMmY0YzU1M2QtYjdiYy00M2QzLTk3OTEtNzI1YjAxNTA4ZmEyXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/10YWg29ZGYITqsp2vZqXJIJ7kP38LNllT/view?usp=sharing", "codigo": null },
-            { "titulo": "Tarzán lucha por su vida", "descripcion": "Un médico pide a Tarzán que derrote al brujo nativo.", "imagen": "https://m.media-amazon.com/images/M/MV5BODE5MGFiYmMtNDgzMi00NTFlLWJlZTktNjY1ZWY1ZTEzNTA1XkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/1uP51JQBafwLUEPvXr6VjtyGaBJA-HnFG/view?usp=sharing", "codigo": null },
-            { "titulo": "Tarzán en la selva escondida", "descripcion": "Tarzán lucha contra los cazadores furtivos blancos.", "imagen": "https://m.media-amazon.com/images/M/MV5BYzZkMDU5MDItMzA4Ny00ZmVmLWEzYTYtMGQzYzA4YjA1MDIyXkEyXkFqcGc@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/1x703K6k3Fm4vXmLBm2hyIuX36alXW31J/view?usp=drive_link", "codigo": null },
-            { "titulo": "Volver al Futuro III", "descripcion": "Aventura en el lejano oeste con Marty y Doc.", "imagen": "https://es.web.img3.acsta.net/c_310_420/pictures/14/04/28/11/11/012699.jpg", "urlDrive": "https://drive.google.com/file/d/1jgTK5lvRCQSMIDX9qggCb1ljXnjBMB9_/view?usp=sharing", "codigo": null },
-            { "titulo": "Regreso al futuro II", "descripcion": "Viajes al futuro con la máquina del tiempo de Doc.", "imagen": "https://es.web.img3.acsta.net/pictures/14/04/03/13/45/034916.jpg", "urlDrive": "https://drive.google.com/file/d/15Ry4HLCGMQHr50JMtv2Ar3QgmJ2D9a_q/view?usp=sharing", "codigo": null },
-            { "titulo": "Volver al futuro (1985)", "descripcion": "El inicio de la gran aventura en 1955.", "imagen": "https://mx.web.img3.acsta.net/pictures/18/06/19/03/59/0330518.jpg", "urlDrive": "https://drive.google.com/file/d/1q82yUlxny8geuVOIzXPbjc51O4WcBMsO/view?usp=sharing", "codigo": null },
-            { "titulo": "Beethoven", "descripcion": "Las divertidas travesuras de un adorable San Bernardo.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/ea33ee6c4e992664576e028c27e07c28600a91c9d996a6cc2fae0aafc578e0a4.jpg", "urlDrive": "https://drive.google.com/file/d/1KFZ3glXggcoAUYnyimY4f1lOGenhVwkC/view?usp=sharing", "codigo": null },
-            { "titulo": "El vuelo del Fénix (1965)", "descripcion": "Sobrevivir en pleno desierto del Sahara tras un aterrizaje forzoso.", "imagen": "https://i.blogs.es/8ea53a/fenix/400_300.jpg", "urlDrive": "https://drive.google.com/file/d/1hxnELDS6WG45fRR-yXSF2aiLc98a7_30/view?usp=sharing", "codigo": null },
-            { "titulo": "El hijo de Lassie (1945)", "descripcion": "Laddie, hijo de Lassie, atrapado en Noruega durante la Segunda Guerra Mundial.", "imagen": "https://peliculas.lavanguardia.com/imagenes/w500/6mf53ZU4URwY92MvHKS6HChlJ3p.jpg", "urlDrive": "https://drive.google.com/file/d/1aWWNTm39s7tOe4l-bDvseZuqCvZ8coBH/view?usp=sharing", "codigo": null },
-            { "titulo": "Robinson Crusoe on Marte", "descripcion": "Varado en Marte con solo un mono como compañero.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/676d287a889ba1b3102bac20f8387db1352ad9d7ccb9c5e5fa0b0c4c6b7566b6.jpg", "urlDrive": "https://drive.google.com/file/d/1G5746WchD4ZboUnvk5-tBS5BYFNKwpO2/view?usp=sharing", "codigo": null },
-            { "titulo": "La herencia de los Munster 1966", "descripcion": "Los Munster viajan a Inglaterra al heredar un título nobiliario.", "imagen": "https://imannette.net/wp-content/uploads/2023/10/img_8761.jpeg", "urlDrive": "https://drive.google.com/file/d/1RPi2E4MZlDlsyWKi8gz1W7svg5o1Z0GD/view?usp=sharing", "codigo": null },
-            { "titulo": "La máquina del tiempo 1960", "descripcion": "Un hombre descubre una sociedad oscura en el futuro.", "imagen": "https://www.ecured.cu/images/3/39/El_tiempo_en_sus_manos.JPG", "urlDrive": "https://drive.google.com/file/d/1WuRt307_1rynLRAMceD_FsSH76o-m8pw/view?usp=sharing", "codigo": null },
-            { "titulo": "El bueno, el malo y el feo", "descripcion": "Tres hombres violentos pelean por una caja con 200 000 dólares.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/27053c1cf4b53e9cc3a01bc00f2bea73e6ee7ce6f280e9b53e888d0667bb449f.jpg", "urlDrive": "https://drive.google.com/file/d/1Xn71eAiWv8lRSpXJINCfpRe4nlLl8NWV/view?usp=sharing", "codigo": null },
-            { "titulo": "La Casa Del Lago", "descripcion": "Intercambio de cartas de amor a través del tiempo.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/59dc4a45a71c6582cc7227358a99b6aed9621f5474a3e46368e4d04fc7c8efbe.jpg", "urlDrive": "https://drive.google.com/file/d/1wg_VWItJvEiMdd2tVp3EcCp1MS7vuzWc/view?usp=sharing", "codigo": null },
-            { "titulo": "Barnaby Jones", "descripcion": "Investigación privada contra reloj para encontrar a un convicto.", "imagen": "https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p337410_b_v8_ac.jpg", "urlDrive": "https://drive.google.com/file/d/19V0TSIdIPa0wL2oCn5xI575I0rsfwL9Z/view?usp=sharing", "codigo": null },
-            { "titulo": "Náufragos en la isla de Gilligan", "descripcion": "Los náufragos convierten su hogar isleño en un resort exclusivo.", "imagen": "https://m.media-amazon.com/images/M/MV5BMTMwMTYzNjY2M15BMl5BanBnXkFtZTcwODQ0OTUyMQ@@._V1_QL75_UY207_CR2,0,140,207_.jpg", "urlDrive": "https://drive.google.com/file/d/1BgZ1gT1zPpWmDuMuMovGrKgILj_mZq61/view?usp=sharing", "codigo": null },
-            { "titulo": "El rescate de la isla de Gilligan", "descripcion": "Los náufragos son rescatados tras un tsunami.", "imagen": "https://images.justwatch.com/poster/182140712/s718/el-rescate-de-la-isla-de-gilligan.jpg", "urlDrive": "https://drive.google.com/file/d/14gGxeIJIKR-LRHMM1RGMYq7BcjavE8N9/view?usp=sharing", "codigo": null },
-            { "titulo": "Los Beverly Ricos", "descripcion": "Una familia rica de pueblo se muda a Beverly Hills.", "imagen": "https://m.media-amazon.com/images/M/MV5BNDVjMmFmMWUtNzAxMy00OWRmLWJlNzMtZmVhMjc3OTBjYjNlXkEyXkFqcGc@._V1_QL75_UY281_CR16,0,190,281_.jpg", "urlDrive": "https://drive.google.com/file/d/1RvFbrwJCFrhJJrP7OAVDCZwVauTFCWTB/view?usp=sharing", "codigo": null },
-            { "titulo": "2001 Una odisea del espacio", "descripcion": "Obra maestra de la ciencia ficción de Stanley Kubrick.", "imagen": "https://m.media-amazon.com/images/I/71fCGy3H29L._AC_UF894,1000_QL80_.jpg", "urlDrive": "https://drive.google.com/file/d/1kYD0j9JCFfaJfnpHEuDJwNAh-w-XYlbM/view?usp=sharing", "codigo": null },
-            { "titulo": "Bikini Beach (1964)", "descripcion": "Comedia musical estadounidense.", "imagen": "https://i.redd.it/mduo2owf2p8c1.jpeg", "urlDrive": "https://drive.google.com/file/d/1yw-UzKH8eMJLXXA2ReHly6p-0zBMjKx0/view", "codigo": null },
-            { "titulo": "Viaje alucinante", "descripcion": "Reducción del cuerpo humano a un tamaño microscópico.", "imagen": "https://pics.filmaffinity.com/Viaje_alucinante-783175048-large.jpg", "urlDrive": "https://drive.google.com/file/d/1KZQ3bdWQoafMl180-O94ZSkZP3v4HB3J/view?usp=sharing", "codigo": null },
-            { "titulo": "El Zorro", "descripcion": "Aventuras del clásico héroe enmascarado.", "imagen": "https://m.media-amazon.com/images/I/51ODfZ13foL._AC_UF1000,1000_QL80_.jpg", "urlDrive": "https://drive.google.com/file/d/1qeo9jihKVgMqfdyvwporj7rbW4aO3roF/view", "codigo": null },
-            { "titulo": "Kojak", "descripcion": "Famosa serie policíaca protagonizada por Telly Savalas.", "imagen": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEifsy4xBH4rXxauiQ_x_9_XLWQ_iCrAf_smpeY8d2UgGVJhxmsQrAr5kWELyuv0MNA5GbDO5HU4PstiCP8_hFODpH2qKtZHiTYwcOw3z7hGSeMs-jInRJCuLVUb3s1Yy4hb3DpSTeANNmd6ZIXnz2IPSWZHr4vGnjuW_RcUgJXgusIjMyAbGUe_Ii0rPrU/s320/l_86837_7869d079.jpg", "urlDrive": "https://drive.google.com/file/d/17aHFrLAzi7aTxz32Lqvso1FQu9EIRaKc/view?usp=sharing", "codigo": null },
-            { "titulo": "Ironside", "descripcion": "El inspector de policía investiga los casos más difíciles.", "imagen": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEiHKKB3-k_Hu244-9Bz5jhhHImh0Di286FpyOXBahnZLP1nT0Ri4zzrMsWeOFXRro9Stb-YDyvYS1NKZXgjBHmxVboAEJi_RMi8dLUIeN3V3LsNw8SyMmORVSmq_Fuy3rrh4QN8QJCH_YXPppukTHagfklKNtYKNev9rLrWJFeO1L9wvLrRHeHpio072f8/s568/Ironside-1a7.webp", "urlDrive": "https://drive.google.com/file/d/1x6MS_JmYoS6iCEm3I2bpCLCnMLc1Uob_/view?usp=sharing", "codigo": null },
-            { "titulo": "Odisea 2010", "descripcion": "Secuela directa de la mítica 2001: Una odisea del espacio.", "imagen": "https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEilhJfo_F6VfBUSFnx9jjphQ5PrGXyptUXuM81eT3gWJicWd4yfJ_9vvY0rjrY2KgfmF7cB1QuH-hI3nL9yRNchQ3hnXspiDBeWG-bLVn8EiPbFfNvlB75OXZnZqnY0_WjN5PjJdSfE9XNRvtUTEWkUJzXzwSgPBD2hjT5OI6L9Y5PdB8fvNMau4s8Jbuc/s320/l_86837_7869d079.jpg", "urlDrive": "https://drive.google.com/file/d/1_U5hMBLlvywMoJ2pMZCmn9LoR5cEHaLa/view", "codigo": null },
-            { "titulo": "Batman 1943", "descripcion": "Aventuras clásicas del caballero oscuro en formato serial.", "imagen": "https://images.justwatch.com/poster/302241543/s718/batman-1943.jpg", "urlDrive": "https://drive.google.com/file/d/1rGyguKQqYCv5Ok9Z5R2jp0t-Y7hzClNu/preview", "codigo": null },
-            { "titulo": "Batman: La película", "descripcion": "Adaptación a la gran pantalla del popular cómic.", "imagen": "https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p838_p_v10_ay.jpg", "urlDrive": "https://drive.google.com/file/d/1HsIZ8M4p2WoKjKCZZI8QnjTMxPd9ot-J/preview", "codigo": null },
-            { "titulo": "Comando", "descripcion": "Un coronel retirado intenta salvar a su hija secuestrada.", "imagen": "https://pics.filmaffinity.com/Comando-845878353-large.jpg", "urlDrive": "https://drive.google.com/file/d/1m_WQNL9Is7TDSTbCsRIQteq_Tty8i7cj/view?usp=sharing", "codigo": null },
-            { "titulo": "Terminator 3", "descripcion": "John Connor se enfrenta a la implacable máquina T-X.", "imagen": "https://play-lh.googleusercontent.com/ZRaa7PPJsCEBMu5ACcPVSAmM1eld6CWuXC5xMwl9ikWKRQwT9Zmn_0fi51hlm-KCsBk1=w240-h480-rw", "urlDrive": "https://drive.google.com/file/d/1C_Kp0bWDRhwxI_seLMm5Ddebqy5B1A9h/preview", "codigo": null },
-            { "titulo": "Emmanuelle 2", "descripcion": "Drama erótico ambientado en Hong Kong.", "imagen": "https://m.media-amazon.com/images/S/pv-target-images/c0e12b5a365ca5ca83632158520f905469c8589552bcbdebb297fc778d355881.jpg", "urlDrive": "https://drive.google.com/file/d/1AmiAULQo3zrlxdGrHeKJN0seONjdeC6l/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Report de colegialas nº 3", "descripcion": "Fantasías de las jóvenes en la nueva sociedad alemana.", "imagen": "https://eroticmv.com/wp-content/uploads/2020/06/s0oj7XisoeJ5wogMuZRw8eDzcn0.jpg", "urlDrive": "https://drive.google.com/file/d/19ygRjMaJH8Mk8A8fMYhhwvQd4QKIPWmO/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Y dónde está el policía 33⅓", "descripcion": "Misión encubierta para salvar la ceremonia de los Óscar.", "imagen": "https://media.themoviedb.org/t/p/w220_and_h330_face/lgCevxYNLStn3BhQ3xIy3fMDIAP.jpg", "urlDrive": "https://drive.google.com/file/d/1mpp-xMHNubApCP6ACwsrxgQM-XBBxk04/view?usp=sharing", "codigo": null },
-            { "titulo": "Ultimo metro", "descripcion": "Cortometraje introducido por Tinto Brass.", "imagen": "https://m.media-amazon.com/images/M/MV5BZjdlMDI5ZmMtMzE5My00NzI5LTg0YjktYjZmNjkwZTZjNGQyXkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1GYtXmjwSnBNjTJ4YvkXhQrqh2ObtN3Nk/view?usp=sharing", "codigo": "8384" },
-            { "titulo": "Abbott y Costello vs la momia", "descripcion": "Dos estadounidenses se topan con una momia y un medallón sagrado.", "imagen": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSbV0DqjymRd2S4OVu_btgZaH88Ql_RyfMHkQRUt4d8VQAwxFG677fKMEzzN8ST5JXxvH4&usqp=CAU", "urlDrive": "https://drive.google.com/file/d/1rXpSRv6FKBFTig9V4TEzBNC9yF-rSv7Y/view?usp=sharing", "codigo": null },
-            { "titulo": "Abbott y Costello en Hollywood", "descripcion": "Comedia clásica ambientada en el mundo de la música.", "imagen": "https://resizing.flixster.com/DlvT75cgHkoSpIf2UOV1fppds_I=/fit-in/705x460/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p3777_v_v9_ac.jpg", "urlDrive": "https://drive.google.com/file/d/1zcGqEHpawtMEgVd7OcIdvaGRlY9jeZjo/view?usp=sharing", "codigo": null },
-            { "titulo": "Abbott y Costello en la marina", "descripcion": "Un cantante famoso se une a la Marina de Estados Unidos.", "imagen": "https://pics.filmaffinity.com/abbott_and_costello_in_the_foreign_legion-859287517-msmall.jpg", "urlDrive": "https://drive.google.com/file/d/1LrICZedKrbs7tjnD0olC-uoWf1hZ2b6t/view?usp=sharing&t=2", "codigo": null },
-            { "titulo": "Abbott y Costello en la legión", "descripcion": "Aventuras y enredos en la Legión Extranjera.", "imagen": "https://m.media-amazon.com/images/M/MV5BMzA1MDgwNjk4M15BMl5BanBnXkFtZTYwNzA5OTI5._V1_QL75_UX159_.jpg", "urlDrive": "https://drive.google.com/file/d/1-QMjFclS6I3cNjY4FeqTazsvlkGCUlrM/view?usp=sharing", "codigo": null },
-            { "titulo": "Abbott y Costello en Alaska", "descripcion": "Comedia clásica ambientada en las tierras heladas de Alaska.", "imagen": "https://m.media-amazon.com/images/I/512euKquxEL._AC_SY445_.jpg", "urlDrive": "https://drive.google.com/file/d/1ZYB7Z-orECYqL51rBx9xtcIuUCLNksak/view?usp=sharing", "codigo": null },
-            { "titulo": "Abbott y Costello vs Dr. Jekyll", "descripcion": "Policías en Londres que se topan con la pócima del Dr. Jekyll.", "imagen": "https://i5.walmartimages.com/seo/Abbott-and-Costello-Meet-Dr-Jekyll-and-Mr-Hyde-DVD-Shock-Comedy_92bc5dae-ee24-4672-b59f-79fd4df902b3.2dd52632dd11e870685969957451a651.jpeg", "urlDrive": "https://drive.google.com/file/d/1L8Ol-mgSkpNCflBn7T4BuuzLk3hxtVW5/view?usp=sharing", "codigo": null },
-            { "titulo": "Abbott y Costello En Venus", "descripcion": "Lanzamiento accidental de cohete hacia un planeta de mujeres.", "imagen": "https://www.mauvais-genres.com/36933-thickbox_default/abbott-and-costello-go-to-mars-movie-poster-14x21-in-1953-charles-lamont-bud-abbot-lou-costello.jpg", "urlDrive": "https://drive.google.com/file/d/1jKxY0n5eOWtpAUChtuRywPmAitf7zo97/view?usp=sharing", "codigo": null },
-            { "titulo": "Depredador 1 (1987)", "descripcion": "Fuerzas especiales cazadas por un extraterrestre en la jungla.", "imagen": "https://www.cinecalidad.rs/wp-content/uploads/2017/07/depredador.jpg", "urlDrive": "https://drive.google.com/file/d/1qca85Ro5ho71aio185w7Qc3mQftzkOVo/view?usp=sharing", "codigo": null },
-            { "titulo": "Mister Ed", "descripcion": "Un caballo que habla e interrumpe la vida de su dueño.", "imagen": "https://www.lavanguardia.com/peliculas-series/images/serie/poster/1961/1/w1280/po4hZHoInhRvpOkwZ1nVcdyCrtC.jpg", "urlDrive": "https://drive.google.com/file/d/1CM0uqnzV2SpOLX8KajVAajDWr7icznkB/view?usp=sharing", "codigo": null },
-            { "titulo": "El hombre del rifle (1958)", "descripcion": "Lucas McCain ayuda al sheriff con su gran habilidad con el Winchester.", "imagen": "https://pics.filmaffinity.com/El_hombre_del_rifle_Serie_de_TV-611880410-large.jpg", "urlDrive": "https://drive.google.com/file/d/11qPTfzKeFCBlZGnBIIj1i3gk1yPbM2rZ/view?usp=sharing", "codigo": null },
-            { "titulo": "Tarzan and His Mate", "descripcion": "Safari africano en busca de marfil.", "imagen": "https://resizing.flixster.com/yzZ85j4cDU8B1g7cPNcnXy0w0Bg=/206x305/v2/https://resizing.flixster.com/-XZAfHZM39UwaGJIFWKAE8fS0ak=/v3/t/assets/p3275_p_v8_an.jpg", "urlDrive": "https://drive.google.com/file/d/1YAYUo7G9PD4mnjpHVJ3UXr1YX3fQoEnd/view?usp=sharing", "codigo": null },
-            { "titulo": "Sargento Preston 1955", "descripcion": "Policía Montada de Canadá en el Yukón.", "imagen": "https://m.media-amazon.com/images/I/819OiDUVL2L._UF1000,1000_QL80_.jpg", "urlDrive": "https://drive.google.com/file/d/1o_HW7yQqDS_MdFQSpsWRMcN9uruqsXqO/view?usp=sharing", "codigo": null },
-            { "titulo": "Flipper", "descripcion": "Aventuras del simpático delfín.", "imagen": "https://m.media-amazon.com/images/M/MV5BMTc3NTM4NTMwOF5BMl5BanBnXkFtZTcwMjM1Mjg4NA@@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/1hkCMhgkOhBRLbD08_FTM9KJ4PmAPjpiQ/view?usp=sharing", "codigo": null },
-            { "titulo": "Tarzán y las amazonas", "descripcion": "Búsqueda de una antigua ciudad en un valle oculto.", "imagen": "https://cartelesmix.es/cartelesdecine/wp-content/uploads/2018/07/tarzanylasamazonas45008.jpg", "urlDrive": "https://drive.google.com/file/d/17lnv7F-DBvOYsmhKhUr_fT3Z3WwF5xOT/view?usp=sharing", "codigo": null },
-            { "titulo": "Mi Marciano Favorito", "descripcion": "Un extraterrestre varado en la Tierra.", "imagen": "https://m.media-amazon.com/images/M/MV5BNDg2NTMwMzA0M15BMl5BanBnXkFtZTcwMTQ2NDUxMQ@@._V1_FMjpg_UX1000_.jpg", "urlDrive": "https://drive.google.com/file/d/1k9PNst5sndGrG92oykUyswM-fxqsWpGs/view?usp=sharing", "codigo": null },
-            { "titulo": "LASSIE - SERIE TV", "descripcion": "Galardonada serie con el inolvidable perro collie.", "imagen": "https://www.lavanguardia.com/peliculas-series/images/serie/poster/1954/9/w300/vqbVr4fYRZb28ywczaidn29JJTA.jpg", "urlDrive": "https://drive.google.com/file/d/1JQEl5FtTpHiKvrdKredtki3qgUtQod0S/view?usp=sharing", "codigo": null },
-            { "titulo": "Daktari", "descripcion": "Centro de estudios animales en África.", "imagen": "https://m.media-amazon.com/images/I/51nHajPxU9L._UF894,1000_QL80_.jpg", "urlDrive": "https://drive.google.com/file/d/1J7XXVoQmK5pj5XeF68T4FaA91hltZSGm/view?usp=sharing", "codigo": null },
-            { "titulo": "Las Aventuras de Rin Tin Tin", "descripcion": "Clásica serie de TV ambientada en el Salvaje Oeste.", "imagen": "https://m.media-amazon.com/images/M/MV5BMzgyYTYwZGQtNDcwNC00ODhhLThlYjYtYzIxOGMxNDExZTNlXkEyXkFqcGc@._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/1EbHgQhySwZfR0lyCjmQnMkJ-P70RL74d/view?usp=sharing", "codigo": null },
-            { "titulo": "Misión Imposible ( 1966 )", "descripcion": "Un clásico de la televisión con la Fuerza de Misiones Imposibles.", "imagen": "https://s3.opensubtitles.com/features/4/0/2/8204.jpg", "urlDrive": "https://drive.google.com/file/d/15h74amMWOgxKqoCdsXl80ibEF7z2cw99/view?usp=sharing", "codigo": null },
-            { "titulo": "LOS 3 CHIFLADOS", "descripcion": "Comedia basada en el slapstick y la comicidad física.", "imagen": "https://www.lavanguardia.com/peliculas-series/images/serie/poster/2024/5/w1280/o5aZTW2nFVCQzkiOnaiAXgRzKcc.jpg", "urlDrive": "https://drive.google.com/file/d/1sn5gdexgBmAwbtndQ3sT29_6FPs2JHE0/view?usp=sharing", "codigo": null },
-            { "titulo": "Titanes en el ring", "descripcion": "Aventuras con Martín Karadagián y su troupe.", "imagen": "https://www.radiocantilo.com/adjuntos/cantilo/2018/10/titanes-en-el-ring-Silva-brothers-720x1024.jpg", "urlDrive": "https://drive.google.com/file/d/1p2Lp7q2Vj6Yhxs2qBOE8GsqTYYA1dkP-/view?usp=sharing", "codigo": null },
-            { "titulo": "La Pandilla (1955)", "descripcion": "Niños con habilidades especiales para ayudar a los demás.", "imagen": "https://pics.filmaffinity.com/La_Pandilla_Serie_de_TV-229666271-large.jpg", "urlDrive": "https://drive.google.com/file/d/1X_QOyjR9h5zQcBGiRuUJ7GAO5ErfyfYw/view?usp=sharing", "codigo": null },
-            { "titulo": "Viaje Al Centro De La Tierra", "descripcion": "Exploración a través de un volcán islandés.", "imagen": "https://m.media-amazon.com/images/M/MV5BMTg2MjkyMjMzM15BMl5BanBnXkFtZTYwMjQ1ODg4._V1_.jpg", "urlDrive": "https://drive.google.com/file/d/130YMhi-XFGnAy8cJ76U2Wnk4CRy3KSVM/view?usp=sharing", "codigo": null },
-            { "titulo": "GREASE (1978)", "descripcion": "Musical romántico protagonizado por John Travolta y Olivia Newton John.", "imagen": "https://i.pinimg.com/736x/76/65/a0/7665a0f3298262e079b2d8fd3fa734a2.jpg", "urlDrive": "https://drive.google.com/file/d/1AfkegbTGrVEKXUN8Ninr54Kk0Mb037k2/view?usp=sharing", "codigo": null }
-        ];
-
-        const cleanDriveUrl = (url) => { 
-            if (!url) return ''; 
-            if (url.includes('drive.google.com')) { 
-                const match = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || url.match(/id=([a-zA-Z0-9_-]+)/);
-                if (match) {
-                    return `https://drive.google.com/file/d/${match[1]}/preview?usp=sharing&rm=minimal&autoplay=1`;
-                }
-            } 
-            return url; 
+        // ========== UTILS ==========
+        const safeStorage = {
+            getItem: k => { try { return localStorage.getItem(k); } catch { return null; } },
+            setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
         };
 
-        const App = () => {
-            const [activeCategory, setActiveCategory] = useState('peliculas'); 
-            const [items, setItems] = useState([]);
-            const [menuIndex, setMenuIndex] = useState(0); 
-            const [cardIndex, setCardIndex] = useState(0); 
-            const [isMenuSelected, setIsMenuSelected] = useState(true); 
-            
-            const [selectedSerie, setSelectedSerie] = useState(null);
-            const [activeSeasonIndex, setActiveSeasonIndex] = useState(0);
-            const [episodeIndex, setEpisodeIndex] = useState(0);
+        const URLS = {
+            TV: './listaoficial.m3u',
+            SERIES: './playlist.json',
+            MOVIES: './peliculas.json',
+            ANIMADOS: './animados.json'
+        };
+        const RAW = {
+            TV: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/listaoficial.m3u',
+            SERIES: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/playlist.json',
+            MOVIES: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/peliculas.json',
+            ANIMADOS: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/animados.json'
+        };
 
-            const [playingItem, setPlayingItem] = useState(null);
-            const [pinModalItem, setPinModalItem] = useState(null);
-            const [pinInput, setPinInput] = useState('');
-            const [pinError, setPinError] = useState(false);
-            
-            const menuRefs = useRef([]);
-            const cardRefs = useRef([]);
-            const episodeRefs = useRef([]);
+        const convertUrl = (url) => {
+            if (!url) return '';
+            if (url.includes('ok.ru/video/') && !url.includes('videoembed') && !url.includes('search'))
+                return url.replace('ok.ru/video/', 'ok.ru/videoembed/');
+            if (url.includes('drive.google.com')) {
+                let id = '';
+                if (url.includes('/file/d/')) id = url.split('/file/d/')[1]?.split('/')[0];
+                else if (url.includes('id=')) id = url.split('id=')[1]?.split('&')[0];
+                if (id) return `https://drive.google.com/file/d/${id}/preview`;
+            }
+            return url;
+        };
 
-            useEffect(() => {
-                const loadAllContent = async () => {
-                    let tvList = [];
-                    let kidsList = [];
-                    let seriesList = [];
+        const fetchSmart = async (local, raw, isJson = true) => {
+            const t = `?t=${Date.now()}`;
+            try {
+                const r = await fetch(local + t);
+                if (r.ok) {
+                    const txt = await r.text();
+                    if (!txt.trim().startsWith('<!')) return isJson ? JSON.parse(txt) : txt;
+                }
+            } catch {}
+            try {
+                const r = await fetch(raw + t);
+                if (r.ok) return isJson ? await r.json() : await r.text();
+            } catch {}
+            return null;
+        };
 
-                    try {
-                        const tvRes = await fetch('https://raw.githubusercontent.com/sejo48/retrom3u/refs/heads/main/listaoficial.m3u');
-                        const tvText = await tvRes.text();
-                        tvList = parseM3U(tvText);
-                    } catch (e) {}
-
-                    try {
-                        const seriesRes = await fetch('https://raw.githubusercontent.com/sejo48/jorgedrive/refs/heads/main/playlist.json');
-                        const seriesJson = await seriesRes.json();
-                        seriesList = (Array.isArray(seriesJson) ? seriesJson : []).map((s, i) => ({
-                            id: `serie-${i}`,
-                            titulo: s.tituloSerie || s.name,
-                            descripcion: s.descripcion || s.sinopsis,
-                            imagen: s.imagen || s.image,
-                            codigo: s.codigo || s.pin,
-                            type: 'serie',
-                            seasons: (s.temporadas || []).map(t => ({
-                                season_number: t.numeroTemporada || 1,
-                                episodes: (t.episodios || []).map(e => ({
-                                    titulo: e.tituloEpisodio || e.title,
-                                    urlDrive: cleanDriveUrl(e.urlDrive || e.url)
-                                }))
-                            }))
-                        }));
-                    } catch (e) {}
-
-                    try {
-                        const kidsRes = await fetch('https://raw.githubusercontent.com/sejo48/animados./refs/heads/main/animados.json');
-                        const kidsJson = await kidsRes.json();
-                        kidsList = (Array.isArray(kidsJson) ? kidsJson : []).map((a, i) => ({
-                            titulo: a.titulo || a.tituloSerie || a.name,
-                            descripcion: a.descripcion || a.sinopsis,
-                            imagen: a.imagen || a.image || a.poster,
-                            urlDrive: cleanDriveUrl(a.urlDrive || a.url),
-                            codigo: a.codigo || a.pin,
-                            type: 'animado'
-                        }));
-                    } catch (e) {}
-
-                    const formattedMovies = STATIC_MOVIES.map(m => ({
-                        ...m,
-                        urlDrive: cleanDriveUrl(m.urlDrive),
-                        type: 'pelicula'
-                    }));
-
-                    window.APP_CONTENT = {
-                        peliculas: formattedMovies,
-                        series: seriesList,
-                        animados: kidsList,
-                        tv: tvList
-                    };
-
-                    setItems(formattedMovies);
-                };
-                loadAllContent();
-            }, []);
-
-            const parseM3U = (data) => {
-                const lines = data.split('\n');
-                const channels = [];
-                for (let i = 0; i < lines.length; i++) {
-                    const line = lines[i].trim();
-                    if (line.startsWith('#EXTINF:')) {
-                        let title = 'Canal';
-                        const url = lines[i + 1] ? lines[i + 1].trim() : '';
-                        if (url && url.startsWith('http')) {
-                            const logoMatch = line.match(/tvg-logo="([^"]*)"/); 
-                            const logo = logoMatch ? logoMatch[1] : '';
-                            const groupMatch = line.match(/group-title="([^"]*)"/); 
-                            const group = groupMatch ? groupMatch[1] : 'General';
-                            const commaIndex = line.lastIndexOf(',');
-                            if (commaIndex !== -1) title = line.substring(commaIndex + 1).trim();
-                            channels.push({ titulo: title, imagen: logo, urlDrive: url, group, type: 'tv' });
-                        }
+        const parseM3U = (data) => {
+            if (!data) return [];
+            const lines = data.split('\n');
+            const ch = [];
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (line.startsWith('#EXTINF:')) {
+                    const url = lines[i + 1]?.trim();
+                    if (url?.startsWith('http')) {
+                        const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
+                        const group = line.match(/group-title="([^"]*)"/)?.[1] || 'General';
+                        const comma = line.lastIndexOf(',');
+                        const title = comma !== -1 ? line.substring(comma + 1).trim() : 'Canal';
+                        ch.push({ id: `tv-${i}`, title, image: logo, group, url, type: 'tv' });
                     }
                 }
-                return channels;
+            }
+            return ch;
+        };
+
+        // ========== ICONS ==========
+        const Icon = ({ name, size = 24, className = '', fill = 'none' }) => {
+            const icons = {
+                search: <path d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 111.414-1.414A7.5 7.5 0 0116.65 16.65z"/>,
+                x: <path d="M6 18L18 6M6 6l12 12"/>,
+                tv: <path d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"/>,
+                film: <path d="M19.82 2H4.18C2.97 2 2 2.97 2 4.18v15.64C2 21.03 2.97 22 4.18 22h15.64c1.21 0 2.18-.97 2.18-2.18V4.18C22 2.97 21.03 2 19.82 2zM7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 7h5M17 17h5"/>,
+                play: <path d="M5 3l14 9-14 9V3z"/>,
+                heart: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>,
+                arrowLeft: <path d="M19 12H5m7 7l-7-7 7-7"/>,
+                clapperboard: <g><path d="M20.2 6 3 11l-.9-2.4c-.5-1.1.2-2.3 1.3-2.8l3.2-1.4c1.1-.5 2.3.2 2.8 1.3l.9 2.4 7.9-3 2 4.5Z"/><path d="M4 11v9a2 2 0 002 2h12a2 2 0 002-2v-9"/></g>,
+                lock: <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a7 7 0 00-14 0v2"/>,
+                smile: <g><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></g>,
+                refresh: <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>,
+                maximize: <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>,
+                qr: <g><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/></g>
             };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
+                     fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                     className={className}>
+                    {icons[name] || icons.search}
+                </svg>
+            );
+        };
 
-            const changeCategory = (cat) => {
-                setActiveCategory(cat);
-                setCardIndex(0);
-                setSelectedSerie(null);
-                if (window.APP_CONTENT && window.APP_CONTENT[cat]) {
-                    setItems(window.APP_CONTENT[cat]);
-                }
-            };
+        // ========== COMPONENTS ==========
+        const IntroScreen = ({ onEnter }) => {
+            const btnRef = useRef(null);
+            useEffect(() => { btnRef.current?.focus(); }, []);
+            return (
+                <div className="fixed inset-0 z-[200] bg-[#0a0c10] flex items-center justify-center">
+                    <div className="absolute inset-0 overflow-hidden">
+                        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-[#E50914]/10 rounded-full blur-[140px]"/>
+                    </div>
+                    <div className="relative z-10 text-center max-w-lg px-8 animate-slide-up">
+                        <div className="mb-5 inline-block bg-[#E50914] px-4 py-1.5 rounded-md text-xs font-bold tracking-widest uppercase">
+                            Smart TV Edition
+                        </div>
+                        <h1 className="text-6xl font-black tracking-tighter mb-3">
+                            MAGIS<span className="text-[#E50914]">Tube</span>
+                        </h1>
+                        <p className="text-gray-400 text-base mb-10 italic">Cine · Series · TV en vivo</p>
+                        <button
+                            ref={btnRef}
+                            onClick={onEnter}
+                            className="focusable bg-white text-black px-12 py-4 rounded-full font-bold text-lg shadow-2xl flex items-center gap-3 mx-auto transition-transform"
+                        >
+                            <span>Comenzar</span>
+                            <Icon fill="black" name="play" size={20}/>
+                        </button>
+                        <p className="mt-12 text-xs text-gray-600">Usa el control remoto · Flechas + OK</p>
+                        <p className="mt-3 text-sm text-gold font-serif font-bold">Jorge Arturo Hernández Méndez</p>
+                    </div>
+                </div>
+            );
+        };
 
-            useEffect(() => {
-                if (!playingItem && !pinModalItem) {
-                    if (selectedSerie) {
-                        if (episodeRefs.current[episodeIndex]) {
-                            episodeRefs.current[episodeIndex].focus();
-                        }
-                    } else if (isMenuSelected) {
-                        if (menuRefs.current[menuIndex]) {
-                            menuRefs.current[menuIndex].focus();
-                        }
-                    } else {
-                        if (cardRefs.current[cardIndex]) {
-                            cardRefs.current[cardIndex].focus();
-                            cardRefs.current[cardIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        }
-                    }
-                }
-            }, [isMenuSelected, menuIndex, cardIndex, selectedSerie, episodeIndex, items, playingItem, pinModalItem]);
-
-            // Manejador global de teclado optimizado con soporte total para Escape
-            useEffect(() => {
-                const handleKeyDown = (e) => {
-                    const key = e.key;
-                    const keyCode = e.keyCode;
-
-                    // Si está reproduciendo, cualquier tecla de salida (Escape, Backspace, etc.) cierra el reproductor inmediatamente
-                    if (playingItem) {
-                        if (key === 'Escape' || key === 'Backspace' || keyCode === 8 || keyCode === 27 || keyCode === 461) {
-                            e.preventDefault();
-                            setPlayingItem(null);
-                        }
-                        return;
-                    }
-
-                    if (pinModalItem) {
-                        if (key === 'Escape' || key === 'Backspace' || keyCode === 8 || keyCode === 27) {
-                            setPinModalItem(null);
-                            setPinInput('');
-                            setPinError(false);
-                        }
-                        return;
-                    }
-
-                    if (selectedSerie) {
-                        if (key === 'ArrowRight' || keyCode === 39) {
-                            const currentSeason = selectedSerie.seasons[activeSeasonIndex];
-                            if (currentSeason && currentSeason.episodes) {
-                                setEpisodeIndex(prev => Math.min(prev + 1, currentSeason.episodes.length - 1));
-                            }
-                        } else if (key === 'ArrowLeft' || keyCode === 37) {
-                            setEpisodeIndex(prev => Math.max(prev - 1, 0));
-                        } else if (key === 'ArrowDown' || keyCode === 40) {
-                            setEpisodeIndex(prev => Math.min(prev + 3, (selectedSerie.seasons[activeSeasonIndex]?.episodes?.length || 1) - 1));
-                        } else if (key === 'ArrowUp' || keyCode === 38) {
-                            if (episodeIndex < 3) {
-                                setSelectedSerie(null);
-                            } else {
-                                setEpisodeIndex(prev => Math.max(prev - 3, 0));
-                            }
-                        } else if (key === 'Escape' || key === 'Backspace' || keyCode === 8 || keyCode === 27) {
-                            setSelectedSerie(null);
-                        } else if (key === 'Enter' || keyCode === 13) {
-                            e.preventDefault();
-                            const ep = selectedSerie.seasons[activeSeasonIndex]?.episodes?.[episodeIndex];
-                            if (ep) {
-                                setPlayingItem({ titulo: `${selectedSerie.titulo} - ${ep.titulo}`, urlDrive: ep.urlDrive });
-                            }
-                        }
-                        return;
-                    }
-
-                    const cols = activeCategory === 'tv' ? 1 : 4; 
-
-                    if (key === 'ArrowRight' || keyCode === 39) {
-                        if (isMenuSelected) {
-                            setIsMenuSelected(false);
-                            setCardIndex(0);
-                        } else if (activeCategory !== 'tv') {
-                            setCardIndex(prev => Math.min(prev + 1, items.length - 1));
-                        }
-                    } else if (key === 'ArrowLeft' || keyCode === 37) {
-                        if (!isMenuSelected) {
-                            if (activeCategory === 'tv' || cardIndex % cols === 0) {
-                                setIsMenuSelected(true);
-                            } else {
-                                setCardIndex(prev => Math.max(prev - 1, 0));
-                            }
-                        }
-                    } else if (key === 'ArrowDown' || keyCode === 40) {
-                        if (isMenuSelected) {
-                            setMenuIndex(prev => Math.min(prev + 1, 3));
-                            const cats = ['peliculas', 'series', 'animados', 'tv'];
-                            changeCategory(cats[Math.min(menuIndex + 1, 3)]);
-                        } else {
-                            setCardIndex(prev => Math.min(prev + cols, items.length - 1));
-                        }
-                    } else if (key === 'ArrowUp' || keyCode === 38) {
-                        if (isMenuSelected) {
-                            setMenuIndex(prev => Math.max(prev - 1, 0));
-                            const cats = ['peliculas', 'series', 'animados', 'tv'];
-                            changeCategory(cats[Math.max(menuIndex - 1, 0)]);
-                        } else {
-                            if (cardIndex < cols) {
-                                setIsMenuSelected(true);
-                            } else {
-                                setCardIndex(prev => Math.max(prev - cols, 0));
-                            }
-                        }
-                    } else if (key === 'Enter' || keyCode === 13) {
-                        e.preventDefault();
-                        if (isMenuSelected) {
-                            const cats = ['peliculas', 'series', 'animados', 'tv'];
-                            changeCategory(cats[menuIndex]);
-                            setIsMenuSelected(false);
-                            setCardIndex(0);
-                        } else {
-                            const selected = items[cardIndex];
-                            if (selected) {
-                                if (selected.codigo) {
-                                    setPinModalItem(selected);
-                                    setPinInput('');
-                                    setPinError(false);
-                                } else if (selected.type === 'serie') {
-                                    setSelectedSerie(selected);
-                                    setActiveSeasonIndex(0);
-                                    setEpisodeIndex(0);
-                                } else {
-                                    let playUrl = selected.urlDrive;
-                                    if (activeCategory === 'tv' && playUrl.includes('drive.google.com')) {
-                                        playUrl = cleanDriveUrl(playUrl);
-                                    }
-                                    setPlayingItem({ titulo: selected.titulo, urlDrive: playUrl });
-                                }
-                            }
-                        }
-                    }
-                };
-
-                window.addEventListener('keydown', handleKeyDown);
-                return () => window.removeEventListener('keydown', handleKeyDown);
-            }, [isMenuSelected, menuIndex, cardIndex, items, playingItem, pinModalItem, selectedSerie, activeSeasonIndex, episodeIndex, activeCategory]);
-
-            const handlePinSubmit = (e) => {
-                e.preventDefault();
-                if (pinInput === String(pinModalItem.codigo)) {
-                    const itemToPlay = pinModalItem;
-                    setPinModalItem(null);
-                    setPinInput('');
-                    setPinError(false);
-                    if (itemToPlay.type === 'serie') {
-                        setSelectedSerie(itemToPlay);
-                        setActiveSeasonIndex(0);
-                        setEpisodeIndex(0);
-                    } else {
-                        setPlayingItem(itemToPlay);
-                    }
-                } else {
-                    setPinError(true);
-                    setPinInput('');
-                }
-            };
-
-            const menuOptions = [
-                { id: 'peliculas', label: '🎬 Películas' },
-                { id: 'series', label: '🍿 Series' },
-                { id: 'animados', label: '👶 Animados' },
-                { id: 'tv', label: '📡 TV en Vivo' }
-            ];
+        const Card = ({ item, onClick, isFavorite, onToggleFavorite }) => {
+            const isTv = item.type === 'tv';
+            const hasLock = !!(item.codigo || item.password || item.pin);
+            const isKids = item.type === 'animados';
+            const img = item.imagen || item.image || item.poster || item.logo || '';
+            const title = item.titulo || item.title || item.name || 'Sin título';
 
             return (
-                <div className="w-screen h-screen flex bg-[#05070a] select-none overflow-hidden">
-                    {playingItem ? (
-                        <div className="fixed inset-0 z-[100] bg-black w-screen h-screen overflow-hidden flex items-center justify-center">
-                            <iframe 
-                                src={playingItem.urlDrive} 
-                                className="w-full h-full border-0 absolute inset-0 z-10" 
-                                allow="autoplay; encrypted-media; fullscreen" 
-                                allowFullScreen
-                            ></iframe>
-                            <div className="absolute top-6 left-6 bg-black/90 px-6 py-3 rounded-2xl border border-white/20 text-sm flex items-center gap-4 shadow-2xl z-20 pointer-events-none">
-                                <span className="text-red-500 font-bold">▶ Reproduciendo:</span> <b className="text-white">{playingItem.titulo}</b>
-                                <span className="text-gray-400 text-xs ml-4">Presiona <b>Escape o Backspace</b> para salir</span>
+                <div
+                    tabIndex={0}
+                    className="card-tv focusable flex flex-col gap-2.5 outline-none rounded-xl"
+                    onClick={() => onClick(item)}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(item); } }}
+                >
+                    <div className={`relative overflow-hidden rounded-xl bg-[#151a24] border border-white/5 ${isTv ? 'aspect-video' : 'aspect-[2/3]'}`}>
+                        {img ? (
+                            <img src={img} loading="lazy" alt={title}
+                                 className={`w-full h-full ${isTv ? 'object-contain p-3' : 'object-cover'}`}
+                                 onError={e => { e.target.onerror = null; e.target.src = 'https://placehold.co/300x450/151a24/555?text=+'; }}/>
+                        ) : (
+                            <div className="w-full h-full flex items-center justify-center text-gray-600">
+                                <Icon name={isTv ? 'tv' : 'clapperboard'} size={36}/>
                             </div>
-                            {/* Botón flotante de respaldo para PC si el iframe consume el foco */}
-                            <button 
-                                onClick={() => setPlayingItem(null)}
-                                className="absolute top-6 right-6 z-30 bg-red-600 hover:bg-red-700 text-white font-bold px-5 py-2.5 rounded-xl shadow-2xl border border-white/20 text-xs cursor-pointer"
-                            >
-                                ✕ Salir de Pantalla Completa
-                            </button>
+                        )}
+                        <button
+                            tabIndex={-1}
+                            onClick={e => { e.stopPropagation(); onToggleFavorite(item); }}
+                            className="absolute top-2.5 right-2.5 p-2 bg-black/70 rounded-full"
+                        >
+                            <Icon name="heart" size={16} fill={isFavorite ? '#E50914' : 'none'} className={isFavorite ? 'text-[#E50914]' : 'text-white'}/>
+                        </button>
+                        <div className="absolute bottom-2.5 left-2.5 flex gap-1.5">
+                            {isTv && <span className="bg-[#E50914] text-white text-[10px] font-bold px-2 py-0.5 rounded">LIVE</span>}
+                            {isKids && <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">KIDS</span>}
+                            {hasLock && <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded">PIN</span>}
                         </div>
-                    ) : pinModalItem ? (
-                        <div className="fixed inset-0 z-[60] bg-black/90 backdrop-blur-md flex items-center justify-center p-4">
-                            <div className="bg-[#161d2f] p-8 rounded-2xl max-w-sm w-full text-center border border-white/10 shadow-2xl">
-                                <h3 className="text-xl font-bold text-white mb-2">Contenido Protegido por PIN</h3>
-                                <p className="text-xs text-gray-400 mb-6">Ingresa el código PIN para ver "{pinModalItem.titulo}"</p>
-                                <form onSubmit={handlePinSubmit}>
-                                    <input 
-                                        type="password" 
-                                        maxLength="4" 
-                                        className="w-full bg-black/60 border border-white/20 rounded-xl px-4 py-3 text-center text-3xl tracking-[0.5em] text-white focus:border-[#E50914] outline-none mb-4" 
-                                        value={pinInput} 
-                                        onChange={(e) => setPinInput(e.target.value)} 
-                                        placeholder="••••" 
-                                        autoFocus 
-                                    />
-                                    {pinError && <p className="text-red-500 text-xs mb-4 font-bold">Código PIN incorrecto</p>}
-                                    <div className="flex gap-3">
-                                        <button type="button" onClick={() => setPinModalItem(null)} className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 hover:bg-white/5 font-bold text-sm">Cancelar</button>
-                                        <button type="submit" className="flex-1 py-3 rounded-xl bg-[#E50914] text-white font-bold hover:bg-red-700 text-sm">Aceptar</button>
+                    </div>
+                    <h3 className="text-sm font-semibold text-gray-200 truncate px-1">{title}</h3>
+                </div>
+            );
+        };
+
+        const LockScreen = ({ onUnlock, correctCode, onCancel }) => {
+            const [input, setInput] = useState('');
+            const [error, setError] = useState(false);
+            const inputRef = useRef(null);
+            useEffect(() => { inputRef.current?.focus(); }, []);
+
+            const submit = e => {
+                e.preventDefault();
+                if (input === String(correctCode)) onUnlock();
+                else { setError(true); setInput(''); }
+            };
+
+            return (
+                <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in">
+                    <div className="bg-[#151a24] p-8 rounded-2xl max-w-sm w-full text-center border border-white/10 shadow-2xl">
+                        <div className="mb-5 flex justify-center">
+                            <div className="p-4 bg-red-500/20 rounded-full text-red-500 border border-red-500/30">
+                                <Icon name="lock" size={32}/>
+                            </div>
+                        </div>
+                        <h2 className="text-xl font-bold mb-1">Contenido Protegido</h2>
+                        <p className="text-sm text-gray-400 mb-6">Ingresa el PIN con el control remoto</p>
+                        <form onSubmit={submit}>
+                            <input
+                                ref={inputRef}
+                                type="password"
+                                maxLength={6}
+                                inputMode="numeric"
+                                className="focusable w-full bg-black/60 border border-white/15 rounded-xl px-4 py-4 text-center text-3xl tracking-[0.6em] text-white mb-3"
+                                value={input}
+                                onChange={e => { setInput(e.target.value); setError(false); }}
+                                placeholder="••••"
+                            />
+                            {error && <p className="text-red-500 text-sm mb-3 font-bold">Código incorrecto</p>}
+                            <div className="flex gap-3 mt-4">
+                                <button type="button" onClick={onCancel} className="focusable flex-1 py-3 rounded-xl border border-white/10 text-gray-300 text-sm font-medium">
+                                    Cancelar
+                                </button>
+                                <button type="submit" className="focusable flex-1 py-3 rounded-xl bg-[#E50914] text-white font-bold text-sm">
+                                    Acceder
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
+        // ========== APP ==========
+        const App = () => {
+            const [showIntro, setShowIntro] = useState(true);
+            const [activeTab, setActiveTab] = useState('movies');
+            const [content, setContent] = useState({ tv: [], series: [], movies: [], animados: [] });
+            const [search, setSearch] = useState('');
+            const [selectedItem, setSelectedItem] = useState(null);
+            const [selectedEpisode, setSelectedEpisode] = useState(null);
+            const [isLocked, setIsLocked] = useState(false);
+            const [favorites, setFavorites] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [expandedSeason, setExpandedSeason] = useState(0);
+            const [showQrModal, setShowQrModal] = useState(false);
+            const [tvRefresh, setTvRefresh] = useState(0);
+            const [tvGroup, setTvGroup] = useState('ALL');
+
+            const tvPlayerRef = useRef(null);
+            const gridRef = useRef(null);
+            const searchRef = useRef(null);
+
+            const navTabs = [
+                { id: 'movies', icon: 'clapperboard', label: 'Cine' },
+                { id: 'series', icon: 'film', label: 'Series' },
+                { id: 'animados', icon: 'smile', label: 'Animados' },
+                { id: 'tv', icon: 'tv', label: 'TV' },
+                { id: 'favorites', icon: 'heart', label: 'Favs' }
+            ];
+
+            // Detect mouse usage → show cursor
+            useEffect(() => {
+                const onMove = () => document.body.classList.add('mouse-active');
+                const onKey = () => document.body.classList.remove('mouse-active');
+                window.addEventListener('mousemove', onMove);
+                window.addEventListener('keydown', onKey);
+                return () => {
+                    window.removeEventListener('mousemove', onMove);
+                    window.removeEventListener('keydown', onKey);
+                };
+            }, []);
+
+            // Global Back / Escape key
+            useEffect(() => {
+                const onKey = (e) => {
+                    if (e.key === 'Escape' || e.key === 'Backspace') {
+                        if (showQrModal) { setShowQrModal(false); return; }
+                        if (selectedItem && selectedItem.type !== 'tv') {
+                            setSelectedItem(null);
+                            setIsLocked(false);
+                            e.preventDefault();
+                        }
+                    }
+                };
+                window.addEventListener('keydown', onKey);
+                return () => window.removeEventListener('keydown', onKey);
+            }, [selectedItem, showQrModal]);
+
+            // Load data
+            useEffect(() => {
+                (async () => {
+                    setLoading(true);
+                    try {
+                        const [tvRaw, movRaw, serRaw, aniRaw] = await Promise.all([
+                            fetchSmart(URLS.TV, RAW.TV, false),
+                            fetchSmart(URLS.MOVIES, RAW.MOVIES, true),
+                            fetchSmart(URLS.SERIES, RAW.SERIES, true),
+                            fetchSmart(URLS.ANIMADOS, RAW.ANIMADOS, true)
+                        ]);
+
+                        const tv = tvRaw ? parseM3U(tvRaw) : [];
+
+                        const mapMovies = (raw) => {
+                            const arr = Array.isArray(raw) ? raw : (raw?.peliculas || raw?.content || []);
+                            return arr.map((m, i) => ({
+                                ...m, id: `mov-${i}`, type: 'movies',
+                                title: m.titulo || m.title || m.name,
+                                description: m.descripcion || m.sinopsis || m.plot,
+                                image: m.imagen || m.poster || m.image,
+                                url: convertUrl(m.urlDrive || m.url)
+                            }));
+                        };
+
+                        const mapSeries = (raw, type) => {
+                            const arr = Array.isArray(raw) ? raw : (raw?.series || raw?.animados || []);
+                            return arr.map((s, i) => ({
+                                ...s, id: `${type}-${i}`, type,
+                                title: s.tituloSerie || s.titulo || s.title || s.name,
+                                description: s.descripcion || s.sinopsis,
+                                image: s.imagen || s.poster || s.image,
+                                url: convertUrl(s.urlDrive || s.url),
+                                seasons: (s.temporadas || []).map((t, ti) => ({
+                                    seasonNumber: t.numeroTemporada || ti + 1,
+                                    episodes: (t.episodios || []).map((ep, ei) => ({
+                                        id: `ep-${i}-${ti}-${ei}`,
+                                        title: ep.tituloEpisodio || ep.titulo || `Episodio ${ei + 1}`,
+                                        url: convertUrl(ep.urlDrive || ep.url)
+                                    }))
+                                }))
+                            }));
+                        };
+
+                        setContent({
+                            tv,
+                            movies: movRaw ? mapMovies(movRaw) : [],
+                            series: serRaw ? mapSeries(serRaw, 'series') : [],
+                            animados: aniRaw ? mapSeries(aniRaw, 'animados') : []
+                        });
+                    } catch (err) {
+                        console.error(err);
+                    } finally {
+                        setLoading(false);
+                    }
+                })();
+
+                const favs = safeStorage.getItem('magistube_favs');
+                if (favs) try { setFavorites(JSON.parse(favs)); } catch {}
+            }, []);
+
+            // Auto-select first TV channel
+            useEffect(() => {
+                if (activeTab === 'tv' && content.tv.length && (!selectedItem || selectedItem.type !== 'tv')) {
+                    const pref = content.tv.find(c => /telerred|tele.?red/i.test(c.title)) || content.tv[0];
+                    if (pref) { setSelectedItem(pref); setIsLocked(false); }
+                }
+            }, [activeTab, content.tv]);
+
+            // Focus first card when entering grid
+            useEffect(() => {
+                if (!selectedItem && activeTab !== 'tv' && !loading) {
+                    const t = setTimeout(() => {
+                        const first = gridRef.current?.querySelector('[tabindex="0"]');
+                        first?.focus();
+                    }, 150);
+                    return () => clearTimeout(t);
+                }
+            }, [activeTab, loading, selectedItem, search]);
+
+            const tvGroups = useMemo(() => {
+                const s = new Set(content.tv.map(c => c.group || 'General'));
+                return ['ALL', ...[...s].sort()];
+            }, [content.tv]);
+
+            const toggleFavorite = useCallback((item) => {
+                const id = item.id || item.title;
+                setFavorites(prev => {
+                    const next = prev.some(f => (f.id || f.title) === id)
+                        ? prev.filter(f => (f.id || f.title) !== id)
+                        : [item, ...prev];
+                    safeStorage.setItem('magistube_favs', JSON.stringify(next));
+                    return next;
+                });
+            }, []);
+
+            const getList = () => {
+                if (activeTab === 'favorites') return favorites;
+                let list = content[activeTab] || [];
+                if (search.trim()) {
+                    const q = search.toLowerCase();
+                    list = list.filter(i => (i.title || i.name || '').toLowerCase().includes(q));
+                }
+                return list;
+            };
+
+            const displayed = getList();
+
+            const handlePlay = (item) => {
+                const code = item.codigo || item.password || item.pin;
+                setSelectedItem(item);
+                setIsLocked(!!code);
+                setExpandedSeason(0);
+                if (item.type === 'series' || item.type === 'animados') {
+                    setSelectedEpisode(item.seasons?.[0]?.episodes?.[0] || null);
+                } else setSelectedEpisode(null);
+            };
+
+            const handleTab = (tab) => {
+                setActiveTab(tab.id);
+                setSearch('');
+                setIsLocked(false);
+                if (tab.id !== 'tv') setSelectedItem(null);
+            };
+
+            const toggleFs = () => {
+                const el = tvPlayerRef.current;
+                if (!el) return;
+                if (document.fullscreenElement) document.exitFullscreen?.();
+                else el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
+            };
+
+            if (showIntro) return <IntroScreen onEnter={() => setShowIntro(false)}/>;
+
+            // ========== RENDER ==========
+            return (
+                <div className="tv-layout">
+                    {/* ===== SIDEBAR (siempre visible en TV) ===== */}
+                    <aside className="tv-sidebar">
+                        <div
+                            tabIndex={0}
+                            className="focusable mb-8 p-3 bg-[#E50914] rounded-2xl shadow-lg shadow-red-900/40"
+                            onClick={() => handleTab(navTabs[0])}
+                            onKeyDown={e => { if (e.key === 'Enter') handleTab(navTabs[0]); }}
+                        >
+                            <Icon fill="white" name="play" size={26} className="text-white"/>
+                        </div>
+
+                        <nav className="flex flex-col gap-1 w-full flex-1">
+                            {navTabs.map(tab => (
+                                <button
+                                    key={tab.id}
+                                    tabIndex={0}
+                                    onClick={() => handleTab(tab)}
+                                    className={`nav-item focusable flex flex-col items-center gap-1.5 w-full py-3.5 transition-all border-l-4 ${
+                                        activeTab === tab.id
+                                            ? 'text-[#E50914] bg-white/5 border-[#E50914] font-semibold'
+                                            : 'text-gray-500 border-transparent hover:text-white'
+                                    }`}
+                                >
+                                    <Icon name={tab.icon} size={22}/>
+                                    <span className="text-[11px] tracking-wide">{tab.label}</span>
+                                </button>
+                            ))}
+                        </nav>
+
+                        <button
+                            tabIndex={0}
+                            onClick={() => setShowQrModal(true)}
+                            className="focusable mt-auto mb-4 p-2.5 bg-[#151a24] rounded-xl border border-white/10"
+                            title="QR"
+                        >
+                            <Icon name="qr" size={22} className="text-gray-400"/>
+                        </button>
+                    </aside>
+
+                    {/* ===== MAIN ===== */}
+                    <main className="tv-main">
+
+                        {/* FAVORITOS */}
+                        {activeTab === 'favorites' && !selectedItem && (
+                            <div className="flex-1 overflow-y-auto tv-safe animate-fade-in">
+                                <div className="flex items-center gap-4 mb-8">
+                                    <div className="p-3 bg-[#E50914]/15 rounded-xl text-[#E50914]">
+                                        <Icon fill="currentColor" name="heart" size={24}/>
                                     </div>
-                                </form>
-                            </div>
-                        </div>
-                    ) : selectedSerie ? (
-                        <div className="flex-1 flex flex-col p-8 overflow-hidden bg-[#05070a]">
-                            <div className="flex items-center gap-6 mb-6 pb-4 border-b border-white/10">
-                                <img src={selectedSerie.imagen} className="w-24 h-36 object-cover rounded-xl shadow-lg border border-white/10" />
-                                <div>
-                                    <h2 className="text-3xl font-black text-white">{selectedSerie.titulo}</h2>
-                                    <p className="text-gray-400 text-xs mt-1 max-w-2xl">{selectedSerie.descripcion || "Selecciona un episodio."}</p>
-                                    <div className="flex gap-2 mt-4">
-                                        {(selectedSerie.seasons || []).map((season, sIdx) => (
-                                            <button 
-                                                key={sIdx}
-                                                onClick={() => { setActiveSeasonIndex(sIdx); setEpisodeIndex(0); }}
-                                                className={`px-4 py-2 rounded-lg font-bold text-xs ${activeSeasonIndex === sIdx ? 'bg-[#E50914] text-white' : 'bg-[#161d2f] text-gray-400 border border-white/10'}`}
-                                            >
-                                                Temporada {season.season_number}
-                                            </button>
+                                    <h2 className="text-2xl font-bold">Favoritos</h2>
+                                    <span className="text-gray-500 text-sm ml-2">{favorites.length}</span>
+                                </div>
+                                {favorites.length === 0 ? (
+                                    <div className="text-center py-32 text-gray-500">
+                                        <Icon name="heart" size={48} className="mx-auto mb-4 opacity-25"/>
+                                        <p>No hay favoritos aún</p>
+                                    </div>
+                                ) : (
+                                    <div className="tv-grid" ref={gridRef}>
+                                        {favorites.map((item, i) => (
+                                            <Card key={item.id || i} item={item} isFavorite onClick={handlePlay} onToggleFavorite={toggleFavorite}/>
                                         ))}
                                     </div>
-                                </div>
+                                )}
                             </div>
-                            <div className="flex-1 overflow-y-auto no-scrollbar pb-6 pr-2">
-                                <div className="grid grid-cols-3 gap-4">
-                                    {selectedSerie.seasons[activeSeasonIndex]?.episodes?.map((ep, eIdx) => (
-                                        <div
-                                            key={eIdx}
-                                            ref={el => episodeRefs.current[eIdx] = el}
-                                            tabIndex="0"
-                                            onClick={() => setPlayingItem({ titulo: `${selectedSerie.titulo} - ${ep.titulo}`, urlDrive: ep.urlDrive })}
-                                            onMouseEnter={() => setEpisodeIndex(eIdx)}
-                                            className={`tv-focusable p-4 rounded-xl bg-[#161d2f] cursor-pointer border-2 border-transparent flex items-center justify-between ${episodeIndex === eIdx ? 'focused' : ''}`}
-                                        >
-                                            <div>
-                                                <span className="text-[10px] text-red-500 font-bold uppercase tracking-wider">Episodio {eIdx + 1}</span>
-                                                <h4 className="text-sm font-bold text-white mt-0.5">{ep.titulo}</h4>
-                                            </div>
-                                            <div className="p-2 bg-black/40 rounded-full text-white"><span className="text-xs">▶</span></div>
+                        )}
+
+                        {/* TV EN VIVO */}
+                        {(activeTab === 'tv' || (selectedItem?.type === 'tv')) && (
+                            <div className="flex h-full overflow-hidden">
+                                {/* Lista canales */}
+                                <div className="w-[340px] flex-shrink-0 bg-[#0c0e14] border-r border-white/5 flex flex-col">
+                                    <div className="p-4 border-b border-white/5 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <h2 className="font-bold text-base flex items-center gap-2">
+                                                <Icon name="tv" size={18} className="text-[#E50914]"/> Canales
+                                            </h2>
+                                            <span className="text-xs text-gray-500 bg-white/5 px-2.5 py-1 rounded-full">{content.tv.length}</span>
                                         </div>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="pt-3 border-t border-white/10 text-xs text-gray-500">
-                                <span>Presiona <b>Escape / Flecha Arriba</b> para volver</span>
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Menú Lateral Fijo */}
-                            <div className="w-80 bg-[#0c101d] border-r border-white/10 p-6 flex flex-col justify-between shrink-0 shadow-2xl">
-                                <div>
-                                    <div className="mb-8 pt-2">
-                                        <h1 className="text-3xl font-black tracking-tight text-white"><span className="text-[#E50914]">MAGIS</span> TV</h1>
-                                        <p className="text-gray-400 text-xs mt-1">Smart TV Ultimate Edition</p>
-                                    </div>
-                                    <nav className="flex flex-col gap-3">
-                                        {menuOptions.map((opt, idx) => (
-                                            <button
-                                                key={opt.id}
-                                                ref={el => menuRefs.current[idx] = el}
-                                                tabIndex="0"
-                                                onClick={() => {
-                                                    setMenuIndex(idx);
-                                                    setIsMenuSelected(true);
-                                                    changeCategory(opt.id);
-                                                }}
-                                                onMouseEnter={() => {
-                                                    setMenuIndex(idx);
-                                                    setIsMenuSelected(true);
-                                                    changeCategory(opt.id);
-                                                }}
-                                                className={`tv-focusable w-full text-left px-5 py-4 rounded-2xl font-bold text-sm transition-all flex items-center justify-between bg-[#161d2f] text-gray-200 border-2 border-transparent ${isMenuSelected && menuIndex === idx ? 'focused' : ''}`}
-                                            >
-                                                <span className="text-base">{opt.label}</span>
-                                                {activeCategory === opt.id && <div className="w-2.5 h-2.5 rounded-full bg-[#E50914] shadow-[0_0_10px_#E50914]"></div>}
-                                            </button>
-                                        ))}
-                                    </nav>
-                                </div>
-                                <div className="text-xs text-gray-500 border-t border-white/10 pt-4">
-                                    <p className="font-bold text-gray-400">Instrucciones PC / TV:</p>
-                                    <p className="mt-1">Usa las <b>Flechas</b> y <b>Enter</b>.</p>
-                                </div>
-                            </div>
-
-                            {/* Área Principal de Contenido */}
-                            <div className="flex-1 flex flex-col p-8 overflow-hidden bg-[#05070a]">
-                                <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
-                                    <div>
-                                        <h2 className="text-3xl font-extrabold capitalize text-white tracking-tight">{activeCategory}</h2>
-                                        <p className="text-gray-400 text-xs mt-0.5">Mostrando {items.length} títulos disponibles</p>
-                                    </div>
-                                    <div className="bg-[#161d2f] px-4 py-2 rounded-xl border border-white/10 text-xs text-gray-300">
-                                        Estado: <b className="text-red-500">{isMenuSelected ? 'En Menú Lateral' : 'Navegando Contenido'}</b>
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto no-scrollbar pb-6 pr-2">
-                                    {activeCategory === 'tv' ? (
-                                        <div className="flex flex-col gap-2">
-                                            <div className="grid grid-cols-12 bg-[#161d2f] px-4 py-2.5 rounded-xl font-bold text-xs text-gray-400 uppercase border border-white/5">
-                                                <div className="col-span-1 text-center">#</div>
-                                                <div className="col-span-8">Nombre del Canal</div>
-                                                <div className="col-span-3 text-right">Categoría</div>
-                                            </div>
-                                            {items.map((item, index) => (
-                                                <div 
-                                                    key={index}
-                                                    ref={el => cardRefs.current[index] = el}
-                                                    tabIndex="0"
-                                                    onClick={() => {
-                                                        setCardIndex(index);
-                                                        setIsMenuSelected(false);
-                                                        setPlayingItem({ titulo: item.titulo, urlDrive: item.urlDrive });
-                                                    }}
-                                                    onMouseEnter={() => {
-                                                        setCardIndex(index);
-                                                        setIsMenuSelected(false);
-                                                    }}
-                                                    className={`tv-focusable grid grid-cols-12 items-center px-4 py-3 rounded-xl bg-[#0f1420] border border-white/5 cursor-pointer text-sm font-medium ${!isMenuSelected && cardIndex === index ? 'focused' : ''}`}
-                                                >
-                                                    <div className="col-span-1 text-gray-500 font-bold text-xs text-center">{index + 1}</div>
-                                                    <div className="col-span-8 text-white flex items-center gap-3 truncate">
-                                                        {item.imagen && <img src={item.imagen} className="w-6 h-6 object-contain rounded bg-white/10 p-0.5" onError={(e)=>e.target.style.display='none'} />}
-                                                        <span className="truncate">{item.titulo}</span>
-                                                    </div>
-                                                    <div className="col-span-3 text-right text-xs text-gray-400 truncate">{item.group || 'TV en Vivo'}</div>
-                                                </div>
+                                        <div className="relative">
+                                            <input
+                                                ref={searchRef}
+                                                type="text"
+                                                placeholder="Buscar canal..."
+                                                className="focusable w-full bg-[#0a0c10] border border-white/10 rounded-xl px-4 py-3 text-sm pl-10"
+                                                value={search}
+                                                onChange={e => setSearch(e.target.value)}
+                                            />
+                                            <Icon className="absolute left-3.5 top-3.5 text-gray-500" name="search" size={16}/>
+                                        </div>
+                                        <select
+                                            value={tvGroup}
+                                            onChange={e => setTvGroup(e.target.value)}
+                                            className="focusable w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-gray-300"
+                                        >
+                                            <option value="ALL">Todas las categorías</option>
+                                            {tvGroups.filter(g => g !== 'ALL').map((g, i) => (
+                                                <option key={i} value={g}>{g}</option>
                                             ))}
+                                        </select>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                                        {content.tv
+                                            .filter(c => {
+                                                const ms = !search || c.title.toLowerCase().includes(search.toLowerCase());
+                                                const mg = tvGroup === 'ALL' || c.group === tvGroup;
+                                                return ms && mg;
+                                            })
+                                            .map(ch => {
+                                                const active = selectedItem?.id === ch.id;
+                                                const fav = favorites.some(f => f.id === ch.id);
+                                                return (
+                                                    <div
+                                                        key={ch.id}
+                                                        tabIndex={0}
+                                                        className={`channel-row focusable flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
+                                                            active
+                                                                ? 'bg-[#E50914]/18 border-[#E50914] border-l-4'
+                                                                : 'bg-[#151a24]/50 border-white/5'
+                                                        }`}
+                                                        onClick={() => handlePlay(ch)}
+                                                        onKeyDown={e => { if (e.key === 'Enter') handlePlay(ch); }}
+                                                    >
+                                                        <div className="w-14 h-10 rounded-lg bg-black/80 flex items-center justify-center overflow-hidden border border-white/10 flex-shrink-0 relative">
+                                                            {ch.image
+                                                                ? <img src={ch.image} alt="" className="w-full h-full object-contain p-0.5" onError={e => e.target.style.display='none'}/>
+                                                                : <Icon name="tv" size={16} className="text-gray-600"/>}
+                                                            {active && <div className="absolute inset-0 bg-[#E50914]/25 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#E50914]" style={{animation:'pulse 1.4s infinite'}}/></div>}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className={`text-sm font-bold truncate ${active ? 'text-[#E50914]' : ''}`}>{ch.title}</h4>
+                                                            <span className="text-[11px] text-gray-500">{ch.group}</span>
+                                                        </div>
+                                                        <button
+                                                            tabIndex={-1}
+                                                            onClick={e => { e.stopPropagation(); toggleFavorite(ch); }}
+                                                            className="p-1.5"
+                                                        >
+                                                            <Icon name="heart" size={15} fill={fav ? '#E50914' : 'none'} className={fav ? 'text-[#E50914]' : 'text-gray-600'}/>
+                                                        </button>
+                                                    </div>
+                                                );
+                                            })}
+                                    </div>
+                                </div>
+
+                                {/* Player */}
+                                <div className="flex-1 flex flex-col bg-[#05070a]">
+                                    <div className="flex-1 relative player-box" ref={tvPlayerRef}>
+                                        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur px-3.5 py-1.5 rounded-full border border-white/10 pointer-events-none">
+                                            <div className="w-2 h-2 rounded-full bg-[#E50914]" style={{animation:'pulse 1.4s infinite'}}/>
+                                            <span className="text-xs font-black">MAGIS<span className="text-[#E50914]">TV</span></span>
+                                        </div>
+                                        {selectedItem?.type === 'tv' ? (
+                                            <iframe key={tvRefresh} src={selectedItem.url} className="absolute inset-0 w-full h-full"
+                                                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen/>
+                                        ) : (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3">
+                                                <Icon name="tv" size={48} className="text-[#E50914] opacity-60"/>
+                                                <p className="text-base font-semibold">Selecciona un canal</p>
+                                                <p className="text-sm text-gray-500">Usa ↑↓ en el control remoto</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="bg-[#0c0e14] border-t border-white/5 px-5 py-3.5 flex items-center justify-between">
+                                        <div className="flex items-center gap-3.5 min-w-0">
+                                            {selectedItem?.type === 'tv' ? (
+                                                <>
+                                                    <div className="w-10 h-10 rounded-lg bg-black border border-white/10 overflow-hidden flex-shrink-0">
+                                                        {selectedItem.image
+                                                            ? <img src={selectedItem.image} alt="" className="w-full h-full object-contain"/>
+                                                            : <div className="w-full h-full flex items-center justify-center"><Icon name="tv" size={16} className="text-gray-500"/></div>}
+                                                    </div>
+                                                    <div className="truncate">
+                                                        <h3 className="text-sm font-bold truncate">{selectedItem.title}</h3>
+                                                        <span className="text-xs text-gray-500">{selectedItem.group}</span>
+                                                    </div>
+                                                </>
+                                            ) : <span className="text-sm text-gray-500">Sin canal</span>}
+                                        </div>
+                                        {selectedItem?.type === 'tv' && (
+                                            <div className="flex items-center gap-2">
+                                                <button tabIndex={0} onClick={() => setTvRefresh(n => n+1)} className="focusable p-3 rounded-xl bg-blue-500/15 text-blue-400" title="Refrescar">
+                                                    <Icon name="refresh" size={18}/>
+                                                </button>
+                                                <button tabIndex={0} onClick={() => toggleFavorite(selectedItem)} className="focusable p-3 rounded-xl bg-white/5">
+                                                    <Icon name="heart" size={18}
+                                                          fill={favorites.some(f => f.id === selectedItem.id) ? '#E50914' : 'none'}
+                                                          className={favorites.some(f => f.id === selectedItem.id) ? 'text-[#E50914]' : 'text-gray-300'}/>
+                                                </button>
+                                                <button tabIndex={0} onClick={toggleFs} className="focusable p-3 rounded-xl bg-white/5" title="Pantalla completa">
+                                                    <Icon name="maximize" size={18}/>
+                                                </button>
+                                                <button tabIndex={0} onClick={() => setSelectedItem(null)} className="focusable p-3 rounded-xl bg-red-500/15 text-red-400">
+                                                    <Icon name="x" size={18} />
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* DETALLE / PLAYER */}
+                        {selectedItem && selectedItem.type !== 'tv' && (
+                            <div className="flex flex-col h-full animate-fade-in">
+                                <div className="relative w-full h-[55vh] bg-black player-box flex-shrink-0">
+                                    <button
+                                        tabIndex={0}
+                                        onClick={() => { setSelectedItem(null); setIsLocked(false); }}
+                                        className="focusable absolute top-4 left-4 z-30 bg-black/70 text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm border border-white/10"
+                                    >
+                                        <Icon name="arrowLeft" size={18}/><span>Volver</span>
+                                    </button>
+                                    {isLocked ? (
+                                        <LockScreen
+                                            correctCode={selectedItem.codigo || selectedItem.password || selectedItem.pin}
+                                            onUnlock={() => setIsLocked(false)}
+                                            onCancel={() => { setSelectedItem(null); setIsLocked(false); }}
+                                        />
+                                    ) : (
+                                        <iframe
+                                            src={convertUrl(
+                                                (selectedItem.type === 'series' || selectedItem.type === 'animados') && selectedEpisode
+                                                    ? selectedEpisode.url : selectedItem.url
+                                            )}
+                                            className="absolute inset-0 w-full h-full"
+                                            allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen
+                                        />
+                                    )}
+                                </div>
+
+                                {!isLocked && (
+                                    <div className="flex-1 overflow-y-auto p-6 flex gap-8">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between gap-4 mb-3">
+                                                <div>
+                                                    <h1 className="text-2xl font-bold mb-1.5">{selectedItem.title || selectedItem.titulo}</h1>
+                                                    <span className="text-xs bg-[#1f2937] px-3 py-1 rounded-md uppercase tracking-wide">{selectedItem.type}</span>
+                                                </div>
+                                                <button tabIndex={0} onClick={() => toggleFavorite(selectedItem)} className="focusable p-3 bg-[#1f2937] rounded-full flex-shrink-0">
+                                                    <Icon name="heart" size={22}
+                                                          fill={favorites.some(f => (f.id||f.title)===(selectedItem.id||selectedItem.title)) ? '#E50914' : 'none'}
+                                                          className={favorites.some(f => (f.id||f.title)===(selectedItem.id||selectedItem.title)) ? 'text-[#E50914]' : 'text-gray-400'}/>
+                                                </button>
+                                            </div>
+                                            <p className="text-gray-400 text-sm leading-relaxed max-w-2xl">
+                                                {selectedItem.description || selectedItem.descripcion || selectedItem.sinopsis || 'Sin descripción.'}
+                                            </p>
+                                        </div>
+
+                                        {(selectedItem.type === 'series' || selectedItem.type === 'animados') && selectedItem.seasons?.length > 0 && (
+                                            <div className="w-[360px] flex-shrink-0 bg-[#151a24] border border-white/8 rounded-2xl p-4 flex flex-col max-h-[400px]">
+                                                <h3 className="font-bold text-sm mb-3">Episodios</h3>
+                                                <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
+                                                    {selectedItem.seasons.map((s, i) => (
+                                                        <button key={i} tabIndex={0}
+                                                            onClick={() => setExpandedSeason(i)}
+                                                            className={`focusable px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${
+                                                                expandedSeason === i ? 'bg-[#E50914] text-white' : 'bg-black/40 text-gray-400'
+                                                            }`}>
+                                                            T{s.seasonNumber}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <div className="flex-1 overflow-y-auto space-y-1">
+                                                    {selectedItem.seasons[expandedSeason]?.episodes?.map((ep, i) => (
+                                                        <div key={i} tabIndex={0}
+                                                            onClick={() => setSelectedEpisode(ep)}
+                                                            onKeyDown={e => { if (e.key === 'Enter') setSelectedEpisode(ep); }}
+                                                            className={`ep-row focusable p-3 rounded-xl flex items-center justify-between text-sm border ${
+                                                                selectedEpisode?.url === ep.url
+                                                                    ? 'bg-[#E50914]/20 border-[#E50914]/40 text-white'
+                                                                    : 'border-transparent text-gray-300'
+                                                            }`}>
+                                                            <div className="flex items-center gap-2.5 truncate">
+                                                                {selectedEpisode?.url === ep.url ? (
+                                                                    <div className="flex items-end h-3.5 gap-[2px] w-5 justify-center">
+                                                                        <div className="bar h-full"/><div className="bar h-full"/><div className="bar h-full"/><div className="bar h-full"/>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-gray-600 font-bold text-xs w-5 text-center">{i+1}</span>
+                                                                )}
+                                                                <span className="truncate">{ep.title}</span>
+                                                            </div>
+                                                            <Icon name="play" size={14}
+                                                                  fill={selectedEpisode?.url === ep.url ? '#E50914' : 'none'}
+                                                                  className={selectedEpisode?.url === ep.url ? 'text-[#E50914]' : 'text-gray-600'}/>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* GRID CINE / SERIES / ANIMADOS */}
+                        {!selectedItem && activeTab !== 'tv' && activeTab !== 'favorites' && (
+                            <div className="flex flex-col h-full">
+                                <div className="flex-shrink-0 px-6 pt-5 pb-3 flex items-center gap-4 border-b border-white/5">
+                                    <div className="flex-1 max-w-xl relative">
+                                        <Icon className="absolute left-4 top-3.5 text-gray-500" name="search" size={18}/>
+                                        <input
+                                            type="text"
+                                            placeholder={`Buscar en ${activeTab === 'movies' ? 'Cine' : activeTab}...`}
+                                            className="focusable w-full bg-[#151a24] border border-white/10 rounded-full pl-12 pr-4 py-3 text-sm"
+                                            value={search}
+                                            onChange={e => setSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-1.5 h-6 bg-[#E50914] rounded-full"/>
+                                        <h2 className="text-lg font-bold uppercase tracking-wide">
+                                            {activeTab === 'movies' ? 'Cine' : activeTab === 'series' ? 'Series' : 'Animados'}
+                                        </h2>
+                                        {!loading && <span className="text-gray-600 text-sm">({displayed.length})</span>}
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto px-6 py-5" ref={gridRef}>
+                                    {loading ? (
+                                        <div className="flex justify-center py-24">
+                                            <div className="w-12 h-12 border-4 border-[#E50914] border-t-transparent rounded-full" style={{animation:'spin .8s linear infinite'}}/>
+                                        </div>
+                                    ) : displayed.length === 0 ? (
+                                        <div className="text-center py-24 text-gray-500">
+                                            <p className="text-base">No hay contenido</p>
+                                            {search && <p className="text-sm mt-2">Prueba otra búsqueda</p>}
                                         </div>
                                     ) : (
-                                        <div className="grid grid-cols-4 gap-6">
-                                            {items.map((item, index) => (
-                                                <div 
-                                                    key={index}
-                                                    ref={el => cardRefs.current[index] = el}
-                                                    tabIndex="0"
-                                                    onClick={() => {
-                                                        setCardIndex(index);
-                                                        setIsMenuSelected(false);
-                                                        if (item.codigo) {
-                                                            setPinModalItem(item);
-                                                            setPinInput('');
-                                                            setPinError(false);
-                                                        } else if (item.type === 'serie') {
-                                                            setSelectedSerie(item);
-                                                            setActiveSeasonIndex(0);
-                                                            setEpisodeIndex(0);
-                                                        } else {
-                                                            setPlayingItem(item);
-                                                        }
-                                                    }}
-                                                    onMouseEnter={() => {
-                                                        setCardIndex(index);
-                                                        setIsMenuSelected(false);
-                                                    }}
-                                                    className={`tv-focusable group relative flex flex-col gap-2.5 cursor-pointer rounded-2xl bg-[#161d2f] p-3.5 border-2 border-transparent ${!isMenuSelected && cardIndex === index ? 'focused' : ''}`}
-                                                >
-                                                    <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-black/60 shadow-xl">
-                                                        <img 
-                                                            src={item.imagen} 
-                                                            alt={item.titulo} 
-                                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
-                                                            onError={(e) => e.target.src = 'https://placehold.co/300x450/1f2937/ffffff?text=MAGIS+TV'} 
-                                                        />
-                                                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent opacity-60"></div>
-                                                        {item.codigo && (
-                                                            <span className="absolute top-2.5 right-2.5 bg-yellow-500 text-black text-[10px] font-extrabold px-2 py-0.5 rounded shadow">PIN</span>
-                                                        )}
-                                                    </div>
-                                                    <h3 className="text-xs font-bold text-white truncate text-center mt-1">{item.titulo}</h3>
-                                                </div>
+                                        <div className="tv-grid animate-slide-up">
+                                            {displayed.map((item, i) => (
+                                                <Card key={item.id || i} item={item} onClick={handlePlay}
+                                                      isFavorite={favorites.some(f => (f.id||f.title)===(item.id||item.title))}
+                                                      onToggleFavorite={toggleFavorite}/>
                                             ))}
                                         </div>
                                     )}
                                 </div>
                             </div>
-                        </>
+                        )}
+                    </main>
+
+                    {/* QR Modal */}
+                    {showQrModal && (
+                        <div className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center animate-fade-in">
+                            <div className="bg-[#151a24] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center space-y-5 shadow-2xl">
+                                <p className="text-xs font-black uppercase text-[#E50914] tracking-widest">Escanea y Comparte</p>
+                                <div className="bg-white p-4 rounded-xl inline-block">
+                                    <img src="./mi-qr-pro.png" alt="QR" className="w-52 h-52 object-contain"
+                                         onError={e => { e.target.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(location.href); }}/>
+                                </div>
+                                <h3 className="font-extrabold text-lg">MAGIS <span className="text-[#E50914]">Tube</span></h3>
+                                <button tabIndex={0} onClick={() => setShowQrModal(false)}
+                                        className="focusable w-full bg-[#E50914] text-white py-3.5 rounded-xl font-bold text-sm">
+                                    Cerrar (OK / Back)
+                                </button>
+                            </div>
+                        </div>
                     )}
                 </div>
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
     </script>
 </body>
 </html>
-```eof
