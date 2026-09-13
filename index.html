@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boxplaytv - Smart TV IPTV Edition (Estrenos 2026)</title>
+    <title>Boxplaytv - Smart TV IPTV Edition (Estrenos 2026 & Más)</title>
     
     <!-- Tailwind CSS & Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -74,9 +74,9 @@
         </a>
     </div>
 
-    <!-- Header de la Smart TV -->
+    <!-- Header de la Smart TV con botones de categoría siempre accesibles -->
     <header class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80 shrink-0">
-        <div class="flex items-center space-x-2.5">
+        <div class="flex items-center space-x-2.5 cursor-pointer" onclick="switchCategory('movies2')">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
                 <span class="orbitron font-black text-sm text-white">BOX</span>
             </div>
@@ -86,7 +86,7 @@
             </div>
         </div>
 
-        <!-- Selector de Categorías / Listas -->
+        <!-- Selector de Categorías / Listas (Siempre funcional desde cualquier sección) -->
         <div class="flex items-center space-x-2" id="categories-bar">
             <button onclick="switchCategory('movies2')" id="cat-movies2" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-cyan-500/20 text-cyan-300 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)] transition-all cursor-pointer">Estrenos 2026</button>
             <button onclick="switchCategory('movies')" id="cat-movies" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-slate-900 text-slate-400 border border-slate-800 transition-all cursor-pointer">Películas</button>
@@ -317,9 +317,25 @@
             }
         }
 
+        // Cambio instantáneo de categoría desde cualquier parte de la app
         function switchCategory(cat) {
             currentCat = cat;
             selectedIndex = 0;
+            isPlaying = false;
+            isDetailOpen = false;
+            currentSeries = null;
+
+            // Ocultar vistas de reproductor y detalle
+            document.getElementById('player-view').classList.add('hidden');
+            document.getElementById('player-content').innerHTML = '';
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('grid-view').classList.remove('hidden');
+
+            // Salir de pantalla completa si estuviera activa
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            }
+
             updateCategoryUI();
             renderGrid();
         }
@@ -352,7 +368,6 @@
                 return;
             }
 
-            // Tarjetas compactas y ligeras con texto sutil
             grid.innerHTML = items.map((item, idx) => `
                 <div tabindex="0" onclick="handleItemClick('${item.id}')" onmouseenter="selectedIndex=${idx}; updateFocusStyles();" class="tv-focusable group relative aspect-[2/3] rounded-md overflow-hidden bg-slate-900 border cursor-pointer ${selectedIndex === idx ? 'selected border-cyan-400 ring-1 ring-cyan-500/50' : 'border-slate-800'}">
                     <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://placehold.co/150x225/0f172a/ffffff?text=${encodeURIComponent(item.title)}'" />
@@ -418,7 +433,6 @@
             if (!currentSeries) return;
             const seasons = currentSeries.seasons || [];
 
-            // Renderizar pestañas de temporadas
             const seasonsTabs = document.getElementById('seasons-tabs');
             if (seasons.length === 0) {
                 seasonsTabs.innerHTML = `<span class="text-xs text-slate-400">No hay temporadas registradas.</span>`;
@@ -432,7 +446,6 @@
                 </button>
             `).join('');
 
-            // Renderizar episodios de la temporada activa
             const episodesList = document.getElementById('episodes-list');
             const activeSeason = seasons[activeSeasonIndex] || seasons[0];
             const episodes = activeSeason?.episodes || [];
