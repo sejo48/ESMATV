@@ -2,964 +2,630 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0a0c10">
-    <title>MAGIS Tube · Smart TV</title>
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boxplaytv - Smart TV IPTV Edition (Estrenos 2026)</title>
+    
+    <!-- Tailwind CSS & Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
-    <script>
-        if (typeof Babel !== 'undefined') {
-            Babel.registerPreset('react-classic', {
-                presets: [[Babel.availablePresets['react'], { runtime: 'classic' }]]
-            });
-        }
-    </script>
-
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
-        :root {
-            --bg: #0a0c10;
-            --bg2: #0e1118;
-            --card: #151a24;
-            --accent: #E50914;
-            --focus-ring: 0 0 0 4px rgba(229,9,20,0.45), 0 0 24px rgba(229,9,20,0.35);
-        }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-
-        html, body {
-            background: var(--bg);
-            color: #fff;
-            font-family: 'Inter', system-ui, sans-serif;
-            height: 100%;
-            overflow: hidden; /* TV: no page scroll, sections scroll internally */
-            -webkit-user-select: none;
-            user-select: none;
-            cursor: none; /* hide cursor on pure TV */
-        }
-
-        /* Show cursor only when mouse is used */
-        body.mouse-active { cursor: default; }
-        body.mouse-active * { cursor: default; }
-
-        /* Overscan safe area for TVs (5% margin) */
-        .tv-safe {
-            padding: 3vh 3vw;
-        }
-
-        /* ===== FOCUS SYSTEM (core of remote control) ===== */
-        :focus { outline: none; }
-
-        .focusable:focus,
-        button:focus,
-        [tabindex="0"]:focus,
-        select:focus,
-        input:focus {
-            outline: none !important;
-            box-shadow: var(--focus-ring) !important;
-            transform: scale(1.05);
-            z-index: 20;
-            position: relative;
-        }
-
-        .nav-item:focus {
-            background: rgba(229,9,20,0.18) !important;
-            color: #fff !important;
-            border-left-color: var(--accent) !important;
-            transform: none;
-        }
-
-        .card-tv:focus {
-            transform: scale(1.08);
-            box-shadow: var(--focus-ring), 0 12px 40px rgba(0,0,0,0.5);
-        }
-
-        .channel-row:focus {
-            background: rgba(229,9,20,0.2) !important;
-            border-color: var(--accent) !important;
-            transform: scale(1.02);
-        }
-
-        .ep-row:focus {
-            background: rgba(229,9,20,0.22) !important;
-            border-color: rgba(229,9,20,0.5) !important;
-        }
-
-        /* Scrollbars thin */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #2a3142; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { scrollbar-width: none; }
-
-        /* Animations */
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
-        @keyframes equalize {
-            0% { transform: scaleY(.25); opacity:.5; }
-            100% { transform: scaleY(1); opacity:1; }
-        }
-
-        .animate-fade-in { animation: fadeIn .3s ease-out; }
-        .animate-slide-up { animation: slideUp .4s ease-out; }
-
-        .text-gold {
-            background: linear-gradient(90deg,#BF953F,#FCF6BA,#B38728,#FBF5B7,#AA771C);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-        }
-
-        .bar {
-            width: 3px; background: var(--accent); border-radius: 2px;
-            animation: equalize .85s infinite alternate; transform-origin: bottom;
-        }
-        .bar:nth-child(1){animation-delay:-.2s}
-        .bar:nth-child(2){animation-delay:-.4s}
-        .bar:nth-child(3){animation-delay:-.6s}
-        .bar:nth-child(4){animation-delay:-.8s}
-
-        /* Player */
-        .player-box iframe { width:100%; height:100%; border:0; background:#000; }
-
-        /* Layout TV: fixed sidebar always visible */
-        .tv-layout {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
-        }
-
-        .tv-sidebar {
-            width: 110px;
-            flex-shrink: 0;
-            background: #0c0e14;
-            border-right: 1px solid rgba(255,255,255,0.06);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 24px 0;
-            z-index: 50;
-        }
-
-        .tv-main {
-            flex: 1;
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            font-family: 'Plus Jakarta Sans', sans-serif;
             overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            position: relative;
+            user-select: none;
+            margin: 0;
+            padding: 0;
+        }
+        .orbitron { font-family: 'Orbitron', sans-serif; }
+        
+        .tv-focusable {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .tv-focusable:focus, .tv-focusable.selected {
+            outline: none;
+            transform: scale(1.05) translateY(-4px);
+            border-color: #06b6d4 !important;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.7);
+            background-color: rgba(6, 182, 212, 0.15);
+            z-index: 20;
+        }
+        
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(6, 182, 212, 0.4);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(6, 182, 212, 0.8);
         }
 
-        /* Grid of cards - larger for TV */
-        .tv-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-            gap: 20px;
-            padding: 8px 4px 40px;
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 15px rgba(6, 182, 212, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.8); }
         }
-
-        @media (min-width: 1280px) {
-            .tv-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 24px; }
-        }
-        @media (min-width: 1600px) {
-            .tv-grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 28px; }
+        .animate-glow {
+            animation: pulse-glow 3s infinite;
         }
     </style>
 </head>
-<body>
-    <div id="root">
-        <div style="display:flex;height:100vh;width:100vw;align-items:center;justify-content:center;background:#0a0c10;flex-direction:column;gap:16px;">
-            <div style="width:48px;height:48px;border:4px solid #E50914;border-top-color:transparent;border-radius:50%;animation:spin .9s linear infinite;"></div>
-            <p style="font-size:1.15rem;font-weight:600;color:#fff;">Cargando MAGIS Tube...</p>
+<body class="w-screen h-screen flex flex-col p-3 lg:p-4 select-none">
+
+    <!-- Invitation Banner para boxplaytv.com -->
+    <div class="bg-gradient-to-r from-cyan-950 via-teal-950 to-slate-900 border border-cyan-500/40 px-3 py-1.5 rounded-xl mb-2 flex items-center justify-between shrink-0 shadow-[0_0_15px_rgba(6,182,212,0.2)]">
+        <div class="flex items-center space-x-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            <p class="text-[11px] font-semibold text-cyan-200">
+                ✨ ¿Buscas más contenido, series y canales? Visita nuestra plataforma en <a href="https://boxplaytv.com" target="_blank" class="text-cyan-400 font-bold underline hover:text-cyan-300 transition-colors">boxplaytv.com</a>
+            </p>
         </div>
+        <a href="https://boxplaytv.com" target="_blank" class="hidden sm:inline-flex bg-cyan-600 hover:bg-cyan-500 text-white font-bold px-2.5 py-0.5 rounded-lg text-[10px] transition-colors shadow-md">
+            Visitar boxplaytv.com
+        </a>
     </div>
 
-    <script type="text/babel" data-presets="react-classic">
-        const { useState, useEffect, useRef, useMemo, useCallback } = React;
+    <!-- Header de la Smart TV -->
+    <header class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80 shrink-0">
+        <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+                <span class="orbitron font-black text-sm text-white">BOX</span>
+            </div>
+            <div>
+                <h1 class="orbitron font-black text-base tracking-wider text-cyan-400">BOXPLAY<span class="text-white">TV // IPTV</span></h1>
+                <p id="current-time" class="text-[10px] text-slate-400 font-semibold tracking-wide">Cargando contenido...</p>
+            </div>
+        </div>
 
-        // ========== UTILS ==========
-        const safeStorage = {
-            getItem: k => { try { return localStorage.getItem(k); } catch { return null; } },
-            setItem: (k, v) => { try { localStorage.setItem(k, v); } catch {} }
-        };
+        <!-- Selector de Categorías / Listas -->
+        <div class="flex items-center space-x-2" id="categories-bar">
+            <button onclick="switchCategory('movies2')" id="cat-movies2" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-cyan-500/20 text-cyan-300 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)] transition-all cursor-pointer">Estrenos 2026</button>
+            <button onclick="switchCategory('movies')" id="cat-movies" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-slate-900 text-slate-400 border border-slate-800 transition-all cursor-pointer">Películas</button>
+            <button onclick="switchCategory('series')" id="cat-series" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-slate-900 text-slate-400 border border-slate-800 transition-all cursor-pointer">Series</button>
+        </div>
+    </header>
 
+    <!-- Contenedor Principal / Reproductor -->
+    <main id="main-container" class="flex-1 flex flex-col overflow-hidden relative">
+        
+        <!-- Vista de la Parrilla / Catálogo con portadas compactas -->
+        <div id="grid-view" class="flex-1 flex flex-col overflow-hidden">
+            <div class="flex items-center justify-between mb-2 px-1">
+                <div class="flex items-center space-x-2">
+                    <span id="loading-indicator" class="inline-block w-2 h-2 rounded-full bg-cyan-500 animate-ping"></span>
+                    <h2 id="category-title" class="orbitron font-bold text-xs sm:text-sm text-slate-200">Cargando catálogo IPTV...</h2>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <span class="text-[10px] bg-slate-900 border border-slate-800 px-2 py-0.5 rounded-lg text-slate-400">
+                        Navegación con <strong class="text-cyan-400">Flechas</strong> y <strong class="text-cyan-400">ENTER</strong>
+                    </span>
+                </div>
+            </div>
+
+            <!-- Grid optimizado con más columnas para portadas pequeñas y compactas -->
+            <div class="flex-1 overflow-y-auto px-1 py-1 pr-2" id="grid-scroll-area">
+                <div id="items-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 pb-4"></div>
+            </div>
+        </div>
+
+        <!-- Vista de Detalle de Serie (Temporadas y Episodios) -->
+        <div id="detail-view" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-950/90 rounded-xl border border-cyan-500/30 p-4 relative">
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
+                <button onclick="closeDetail()" class="bg-slate-900 hover:bg-cyan-600 text-white px-3 py-1 rounded-lg border border-slate-800 font-bold text-xs transition-all cursor-pointer flex items-center space-x-1.5">
+                    <span>← Volver al Catálogo</span>
+                </button>
+                <div class="text-cyan-400 font-bold text-xs uppercase tracking-wider">Detalle de Serie & Episodios</div>
+            </div>
+            
+            <div class="flex flex-col md:flex-row gap-4 flex-1 overflow-hidden">
+                <div class="w-full md:w-56 aspect-[2/3] rounded-lg overflow-hidden border border-cyan-500/40 shrink-0 bg-slate-900 shadow-xl">
+                    <img id="detail-poster" src="" alt="Poster" class="w-full h-full object-cover" />
+                </div>
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <h2 id="detail-title" class="orbitron font-black text-lg sm:text-xl text-white mb-1"></h2>
+                    <p id="detail-desc" class="text-xs text-slate-300 mb-4 line-clamp-3 leading-relaxed"></p>
+                    
+                    <div id="seasons-tabs" class="flex items-center space-x-2 mb-3 overflow-x-auto pb-1"></div>
+                    
+                    <div class="flex-1 overflow-y-auto pr-2 space-y-1.5" id="episodes-list"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Vista del Reproductor de Vídeo (Pantalla Completa Forzada) -->
+        <div id="player-view" class="hidden flex-1 relative bg-black rounded-xl overflow-hidden border border-cyan-500/40 shadow-2xl flex items-center justify-center">
+            <div id="player-content" class="w-full h-full absolute inset-0"></div>
+            
+            <div class="absolute top-3 left-3 right-3 flex items-center justify-between z-30 pointer-events-none">
+                <button onclick="closePlayer()" class="pointer-events-auto bg-black/80 hover:bg-cyan-600 text-white px-3 py-1.5 rounded-lg border border-cyan-500/40 font-bold text-[11px] shadow-xl transition-all cursor-pointer flex items-center space-x-1.5">
+                    <span>← Volver (Esc / Atrás)</span>
+                </button>
+                <div id="playing-badge" class="bg-cyan-950/80 border border-cyan-500/50 backdrop-blur-md px-2.5 py-1 rounded-lg text-cyan-300 text-[10px] font-bold uppercase tracking-wider">
+                    Reproduciendo • 4K HDR
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer con Guía y Mando Virtual Inteligente (Se oculta al usar mouse) -->
+    <footer id="app-footer" class="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] text-slate-400 shrink-0 transition-opacity duration-300">
+        <div class="hidden sm:flex items-center space-x-3">
+            <div class="flex items-center space-x-1">
+                <span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-cyan-400 font-mono font-bold text-[9px]">IZQ / DER / ARR / ABA</span>
+                <span>Navegar</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-cyan-400 font-mono font-bold text-[9px]">ENTER</span>
+                <span>Seleccionar</span>
+            </div>
+            <div class="flex items-center space-x-1">
+                <span class="px-1.5 py-0.5 bg-slate-900 border border-slate-700 rounded text-cyan-400 font-mono font-bold text-[9px]">ESC</span>
+                <span>Volver</span>
+            </div>
+        </div>
+
+        <!-- Mando virtual compacto interactivo -->
+        <div class="flex items-center space-x-1.5 bg-slate-900/90 border border-slate-800 p-1 rounded-xl shadow-lg mx-auto sm:mx-0">
+            <button onclick="handleVirtualKey('ArrowLeft')" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-cyan-600 hover:text-white flex items-center justify-center transition-colors cursor-pointer font-bold text-[11px]">◀</button>
+            <div class="flex flex-col space-y-0.5">
+                <button onclick="handleVirtualKey('ArrowUp')" class="w-6 h-5 rounded-md bg-slate-800 hover:bg-cyan-600 hover:text-white flex items-center justify-center transition-colors cursor-pointer font-bold text-[9px]">▲</button>
+                <button onclick="handleVirtualKey('ArrowDown')" class="w-6 h-5 rounded-md bg-slate-800 hover:bg-cyan-600 hover:text-white flex items-center justify-center transition-colors cursor-pointer font-bold text-[9px]">▼</button>
+            </div>
+            <button onclick="handleVirtualKey('ArrowRight')" class="w-6 h-6 rounded-lg bg-slate-800 hover:bg-cyan-600 hover:text-white flex items-center justify-center transition-colors cursor-pointer font-bold text-[11px]">▶</button>
+            <button onclick="handleVirtualKey('Enter')" class="px-2 h-6 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white font-bold transition-colors cursor-pointer text-[10px] shadow-md">OK</button>
+        </div>
+    </footer>
+
+    <script>
+        // URLs oficiales de listas IPTV desde GitHub
         const URLS = {
-            TV: './listaoficial.m3u',
-            SERIES: './playlist.json',
-            MOVIES: './peliculas.json',
-            ANIMADOS: './animados.json'
-        };
-        const RAW = {
-            TV: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/listaoficial.m3u',
-            SERIES: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/playlist.json',
-            MOVIES: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/peliculas.json',
-            ANIMADOS: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/main/animados.json'
+            movies2: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/refs/heads/main/peliculas2.json',
+            movies: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/refs/heads/main/peliculas.json',
+            series: 'https://raw.githubusercontent.com/sejo48/StreamTube-V20/refs/heads/main/playlist.json'
         };
 
-        const convertUrl = (url) => {
+        let currentCat = 'movies2';
+        let APP_DATA = {
+            movies2: [],
+            movies: [],
+            series: []
+        };
+        let selectedIndex = 0;
+        let isPlaying = false;
+        let isDetailOpen = false;
+        let currentSeries = null;
+        let activeSeasonIndex = 0;
+        let isMouseActive = false;
+
+        // Detección de uso de Mouse: oculta el mando virtual si el usuario mueve el ratón
+        window.addEventListener('mousemove', () => {
+            if (!isMouseActive) {
+                isMouseActive = true;
+                const footer = document.getElementById('app-footer');
+                if (footer) footer.style.opacity = '0.2';
+            }
+        });
+
+        // Mostrar mando virtual si usa teclado o toque
+        window.addEventListener('keydown', () => {
+            if (isMouseActive) {
+                isMouseActive = false;
+                const footer = document.getElementById('app-footer');
+                if (footer) footer.style.opacity = '1';
+            }
+        });
+
+        // Reloj superior
+        setInterval(() => {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('current-time').textContent = `${timeStr} • 4K HDR • boxplaytv.com`;
+        }, 1000);
+
+        // Conversor de enlaces para iframe / reproductor con pantalla completa forzada
+        function convertUrl(url) {
             if (!url) return '';
-            if (url.includes('ok.ru/video/') && !url.includes('videoembed') && !url.includes('search'))
-                return url.replace('ok.ru/video/', 'ok.ru/videoembed/');
+            if (url.includes('youtube.com') && !url.includes('/embed/')) {
+                let videoId = '';
+                if (url.includes('watch?v=')) videoId = url.split('watch?v=')[1]?.split('&')[0];
+                else if (url.includes('youtu.be/')) videoId = url.split('youtu.be/')[1]?.split('?')[0];
+                if (videoId) return `https://www.youtube.com/embed/${videoId}?autoplay=1&fs=1&enablejsapi=1`;
+            }
             if (url.includes('drive.google.com')) {
-                let id = '';
-                if (url.includes('/file/d/')) id = url.split('/file/d/')[1]?.split('/')[0];
-                else if (url.includes('id=')) id = url.split('id=')[1]?.split('&')[0];
-                if (id) return `https://drive.google.com/file/d/${id}/preview`;
+                let fileId = '';
+                if (url.includes('/file/d/')) {
+                    const parts = url.split('/file/d/');
+                    if (parts[1]) fileId = parts[1].split('/')[0];
+                } else if (url.includes('id=')) {
+                    const parts = url.split('id=');
+                    if (parts[1]) fileId = parts[1].split('&')[0];
+                }
+                if (fileId) return `https://drive.google.com/file/d/${fileId}/preview`;
             }
             return url;
-        };
+        }
 
-        const fetchSmart = async (local, raw, isJson = true) => {
-            const t = `?t=${Date.now()}`;
+        // Carga de todas las listas IPTV en vivo desde GitHub
+        async function fetchIPTVData() {
             try {
-                const r = await fetch(local + t);
-                if (r.ok) {
-                    const txt = await r.text();
-                    if (!txt.trim().startsWith('<!')) return isJson ? JSON.parse(txt) : txt;
-                }
-            } catch {}
-            try {
-                const r = await fetch(raw + t);
-                if (r.ok) return isJson ? await r.json() : await r.text();
-            } catch {}
-            return null;
-        };
+                // Cargar Estrenos 2026
+                const res2 = await fetch(URLS.movies2);
+                const data2 = await res2.json();
+                const raw2 = Array.isArray(data2) ? data2 : (data2.peliculas || data2.content || []);
+                APP_DATA.movies2 = raw2.map((m, idx) => ({
+                    id: `m2-${idx}`,
+                    type: 'movie',
+                    title: m.titulo || m.title || m.name || 'Estreno 2026',
+                    image: m.imagen || m.poster || m.image || 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80',
+                    url: convertUrl(m.urlDrive || m.url || m.urlOkRu || 'https://www.youtube.com/embed/dQw4w9WgXcQ'),
+                    desc: m.descripcion || m.sinopsis || m.plot || 'Estreno cinematográfico en alta definición.'
+                }));
 
-        const parseM3U = (data) => {
-            if (!data) return [];
-            const lines = data.split('\n');
-            const ch = [];
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (line.startsWith('#EXTINF:')) {
-                    const url = lines[i + 1]?.trim();
-                    if (url?.startsWith('http')) {
-                        const logo = line.match(/tvg-logo="([^"]*)"/)?.[1] || '';
-                        const group = line.match(/group-title="([^"]*)"/)?.[1] || 'General';
-                        const comma = line.lastIndexOf(',');
-                        const title = comma !== -1 ? line.substring(comma + 1).trim() : 'Canal';
-                        ch.push({ id: `tv-${i}`, title, image: logo, group, url, type: 'tv' });
-                    }
-                }
+                // Cargar Películas Generales
+                const res1 = await fetch(URLS.movies);
+                const data1 = await res1.json();
+                const raw1 = Array.isArray(data1) ? data1 : (data1.peliculas || data1.content || []);
+                APP_DATA.movies = raw1.map((m, idx) => ({
+                    id: `m1-${idx}`,
+                    type: 'movie',
+                    title: m.titulo || m.title || m.name || 'Película',
+                    image: m.imagen || m.poster || m.image || 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=300&auto=format&fit=crop&q=80',
+                    url: convertUrl(m.urlDrive || m.url || m.urlOkRu || 'https://www.youtube.com/embed/dQw4w9WgXcQ'),
+                    desc: m.descripcion || m.sinopsis || m.plot || 'Película IPTV.'
+                }));
+
+                // Cargar Series (Mapeo completo de Temporadas y Episodios)
+                const res3 = await fetch(URLS.series);
+                const data3 = await res3.json();
+                const raw3 = Array.isArray(data3) ? data3 : (data3.series || []);
+                APP_DATA.series = raw3.map((s, idx) => ({
+                    id: `s-${idx}`,
+                    type: 'serie',
+                    title: s.tituloSerie || s.titulo || s.title || s.name || 'Serie',
+                    image: s.imagen || s.poster || s.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80',
+                    desc: s.descripcion || s.sinopsis || 'Serie IPTV.',
+                    seasons: (s.temporadas || []).map((t, tIdx) => ({
+                        seasonNumber: t.numeroTemporada || (tIdx + 1),
+                        episodes: (t.episodios || []).map((ep, eIdx) => ({
+                            id: `ep-${idx}-${tIdx}-${eIdx}`,
+                            title: ep.tituloEpisodio || ep.titulo || `Episodio ${eIdx + 1}`,
+                            url: convertUrl(ep.urlDrive || ep.url || 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+                        }))
+                    }))
+                }));
+
+                document.getElementById('loading-indicator').classList.remove('animate-ping');
+                updateCategoryUI();
+                renderGrid();
+            } catch (err) {
+                console.error("Error al cargar IPTV:", err);
+                document.getElementById('category-title').textContent = "Catálogo IPTV (Modo Respaldo)";
+                APP_DATA.movies2 = [
+                    { id: 'e1', type: 'movie', title: 'Stranger Things 5', image: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?w=300&auto=format&fit=crop&q=80', url: 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&fs=1', desc: 'La batalla final por Hawkins.' }
+                ];
+                updateCategoryUI();
+                renderGrid();
             }
-            return ch;
-        };
+        }
 
-        // ========== ICONS ==========
-        const Icon = ({ name, size = 24, className = '', fill = 'none' }) => {
-            const icons = {
-                search: <path d="M21 21l-4.35-4.35m0 0a7.5 7.5 0 111.414-1.414A7.5 7.5 0 0116.65 16.65z"/>,
-                x: <path d="M6 18L18 6M6 6l12 12"/>,
-                tv: <path d="M6 20.25h12m-7.5-3v3m3-3v3m-10.125-3h17.25c.621 0 1.125-.504 1.125-1.125V4.875c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125z"/>,
-                film: <path d="M19.82 2H4.18C2.97 2 2 2.97 2 4.18v15.64C2 21.03 2.97 22 4.18 22h15.64c1.21 0 2.18-.97 2.18-2.18V4.18C22 2.97 21.03 2 19.82 2zM7 2v20M17 2v20M2 12h20M2 7h5M2 17h5M17 7h5M17 17h5"/>,
-                play: <path d="M5 3l14 9-14 9V3z"/>,
-                heart: <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>,
-                arrowLeft: <path d="M19 12H5m7 7l-7-7 7-7"/>,
-                clapperboard: <g><path d="M20.2 6 3 11l-.9-2.4c-.5-1.1.2-2.3 1.3-2.8l3.2-1.4c1.1-.5 2.3.2 2.8 1.3l.9 2.4 7.9-3 2 4.5Z"/><path d="M4 11v9a2 2 0 002 2h12a2 2 0 002-2v-9"/></g>,
-                lock: <path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a7 7 0 00-14 0v2"/>,
-                smile: <g><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></g>,
-                refresh: <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>,
-                maximize: <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3"/>,
-                qr: <g><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/><rect x="14" y="18" width="3" height="3"/><rect x="18" y="14" width="3" height="3"/></g>
+        function switchCategory(cat) {
+            currentCat = cat;
+            selectedIndex = 0;
+            updateCategoryUI();
+            renderGrid();
+        }
+
+        function updateCategoryUI() {
+            ['movies2', 'movies', 'series'].forEach(c => {
+                const btn = document.getElementById(`cat-${c}`);
+                if (!btn) return;
+                if (c === currentCat) {
+                    btn.className = "px-2.5 py-1 rounded-lg font-bold text-[11px] bg-cyan-500/20 text-cyan-300 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)] transition-all cursor-pointer";
+                } else {
+                    btn.className = "px-2.5 py-1 rounded-lg font-bold text-[11px] bg-slate-900 text-slate-400 border border-slate-800 transition-all cursor-pointer";
+                }
+            });
+
+            const titles = {
+                movies2: `Estrenos 2026 (${APP_DATA.movies2.length} títulos)`,
+                movies: `Películas IPTV (${APP_DATA.movies.length} títulos)`,
+                series: `Series IPTV (${APP_DATA.series.length} títulos)`
             };
-            return (
-                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24"
-                     fill={fill} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                     className={className}>
-                    {icons[name] || icons.search}
-                </svg>
-            );
-        };
+            document.getElementById('category-title').textContent = titles[currentCat] || 'Catálogo';
+        }
 
-        // ========== COMPONENTS ==========
-        const IntroScreen = ({ onEnter }) => {
-            const btnRef = useRef(null);
-            useEffect(() => { btnRef.current?.focus(); }, []);
-            return (
-                <div className="fixed inset-0 z-[200] bg-[#0a0c10] flex items-center justify-center">
-                    <div className="absolute inset-0 overflow-hidden">
-                        <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-[#E50914]/10 rounded-full blur-[140px]"/>
-                    </div>
-                    <div className="relative z-10 text-center max-w-lg px-8 animate-slide-up">
-                        <div className="mb-5 inline-block bg-[#E50914] px-4 py-1.5 rounded-md text-xs font-bold tracking-widest uppercase">
-                            Smart TV Edition
-                        </div>
-                        <h1 className="text-6xl font-black tracking-tighter mb-3">
-                            MAGIS<span className="text-[#E50914]">Tube</span>
-                        </h1>
-                        <p className="text-gray-400 text-base mb-10 italic">Cine · Series · TV en vivo</p>
-                        <button
-                            ref={btnRef}
-                            onClick={onEnter}
-                            className="focusable bg-white text-black px-12 py-4 rounded-full font-bold text-lg shadow-2xl flex items-center gap-3 mx-auto transition-transform"
-                        >
-                            <span>Comenzar</span>
-                            <Icon fill="black" name="play" size={20}/>
-                        </button>
-                        <p className="mt-12 text-xs text-gray-600">Usa el control remoto · Flechas + OK</p>
-                        <p className="mt-3 text-sm text-gold font-serif font-bold">Jorge Arturo Hernández Méndez</p>
+        function renderGrid() {
+            const grid = document.getElementById('items-grid');
+            const items = APP_DATA[currentCat] || [];
+            
+            if (items.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-400 text-xs">Cargando contenido de la lista...</div>`;
+                return;
+            }
+
+            // Tarjetas compactas y ligeras con texto sutil
+            grid.innerHTML = items.map((item, idx) => `
+                <div tabindex="0" onclick="handleItemClick('${item.id}')" onmouseenter="selectedIndex=${idx}; updateFocusStyles();" class="tv-focusable group relative aspect-[2/3] rounded-md overflow-hidden bg-slate-900 border cursor-pointer ${selectedIndex === idx ? 'selected border-cyan-400 ring-1 ring-cyan-500/50' : 'border-slate-800'}">
+                    <img src="${item.image}" alt="${item.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onerror="this.src='https://placehold.co/150x225/0f172a/ffffff?text=${encodeURIComponent(item.title)}'" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/20 to-transparent flex flex-col justify-end p-1">
+                        <h3 class="font-bold text-[9px] text-white group-hover:text-cyan-300 transition-colors line-clamp-1">${item.title}</h3>
                     </div>
                 </div>
-            );
-        };
+            `).join('');
 
-        const Card = ({ item, onClick, isFavorite, onToggleFavorite }) => {
-            const isTv = item.type === 'tv';
-            const hasLock = !!(item.codigo || item.password || item.pin);
-            const isKids = item.type === 'animados';
-            const img = item.imagen || item.image || item.poster || item.logo || '';
-            const title = item.titulo || item.title || item.name || 'Sin título';
+            updateFocusStyles();
+        }
 
-            return (
-                <div
-                    tabIndex={0}
-                    className="card-tv focusable flex flex-col gap-2.5 outline-none rounded-xl"
-                    onClick={() => onClick(item)}
-                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(item); } }}
-                >
-                    <div className={`relative overflow-hidden rounded-xl bg-[#151a24] border border-white/5 ${isTv ? 'aspect-video' : 'aspect-[2/3]'}`}>
-                        {img ? (
-                            <img src={img} loading="lazy" alt={title}
-                                 className={`w-full h-full ${isTv ? 'object-contain p-3' : 'object-cover'}`}
-                                 onError={e => { e.target.onerror = null; e.target.src = 'https://placehold.co/300x450/151a24/555?text=+'; }}/>
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-600">
-                                <Icon name={isTv ? 'tv' : 'clapperboard'} size={36}/>
-                            </div>
-                        )}
-                        <button
-                            tabIndex={-1}
-                            onClick={e => { e.stopPropagation(); onToggleFavorite(item); }}
-                            className="absolute top-2.5 right-2.5 p-2 bg-black/70 rounded-full"
-                        >
-                            <Icon name="heart" size={16} fill={isFavorite ? '#E50914' : 'none'} className={isFavorite ? 'text-[#E50914]' : 'text-white'}/>
-                        </button>
-                        <div className="absolute bottom-2.5 left-2.5 flex gap-1.5">
-                            {isTv && <span className="bg-[#E50914] text-white text-[10px] font-bold px-2 py-0.5 rounded">LIVE</span>}
-                            {isKids && <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded">KIDS</span>}
-                            {hasLock && <span className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded">PIN</span>}
-                        </div>
+        function updateFocusStyles() {
+            const items = document.querySelectorAll('#items-grid > div');
+            items.forEach((el, idx) => {
+                if (idx === selectedIndex) {
+                    el.classList.add('selected', 'border-cyan-400');
+                    el.classList.remove('border-slate-800');
+                    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+                } else {
+                    el.classList.remove('selected', 'border-cyan-400');
+                    el.classList.add('border-slate-800');
+                }
+            });
+        }
+
+        function handleItemClick(itemId) {
+            const items = APP_DATA[currentCat] || [];
+            const item = items.find(i => i.id === itemId);
+            if (!item) return;
+
+            if (item.type === 'serie') {
+                openSeriesDetail(item);
+            } else {
+                playMovie(item);
+            }
+        }
+
+        function openSeriesDetail(serie) {
+            isDetailOpen = true;
+            currentSeries = serie;
+            activeSeasonIndex = 0;
+
+            document.getElementById('grid-view').classList.add('hidden');
+            document.getElementById('detail-view').classList.remove('hidden');
+
+            document.getElementById('detail-poster').src = serie.image;
+            document.getElementById('detail-title').textContent = serie.title;
+            document.getElementById('detail-desc').textContent = serie.desc;
+
+            renderSeasonsAndEpisodes();
+        }
+
+        function closeDetail() {
+            isDetailOpen = false;
+            currentSeries = null;
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('grid-view').classList.remove('hidden');
+            renderGrid();
+        }
+
+        function renderSeasonsAndEpisodes() {
+            if (!currentSeries) return;
+            const seasons = currentSeries.seasons || [];
+
+            // Renderizar pestañas de temporadas
+            const seasonsTabs = document.getElementById('seasons-tabs');
+            if (seasons.length === 0) {
+                seasonsTabs.innerHTML = `<span class="text-xs text-slate-400">No hay temporadas registradas.</span>`;
+                document.getElementById('episodes-list').innerHTML = '';
+                return;
+            }
+
+            seasonsTabs.innerHTML = seasons.map((season, sIdx) => `
+                <button onclick="activeSeasonIndex=${sIdx}; renderSeasonsAndEpisodes();" class="px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer border ${activeSeasonIndex === sIdx ? 'bg-cyan-500 text-white border-cyan-400 shadow-[0_0_10px_rgba(6,182,212,0.4)]' : 'bg-slate-900 text-slate-400 border-slate-800'}">
+                    Temporada ${season.seasonNumber || (sIdx + 1)}
+                </button>
+            `).join('');
+
+            // Renderizar episodios de la temporada activa
+            const episodesList = document.getElementById('episodes-list');
+            const activeSeason = seasons[activeSeasonIndex] || seasons[0];
+            const episodes = activeSeason?.episodes || [];
+
+            if (episodes.length === 0) {
+                episodesList.innerHTML = `<div class="text-xs text-slate-500 p-2">No hay episodios en esta temporada.</div>`;
+                return;
+            }
+
+            episodesList.innerHTML = episodes.map((ep, eIdx) => `
+                <div onclick="playEpisode('${ep.url}', '${ep.title}')" class="p-2.5 rounded-lg bg-slate-900/80 hover:bg-cyan-950/60 border border-slate-800 hover:border-cyan-500/50 cursor-pointer flex items-center justify-between transition-all group">
+                    <div class="flex items-center space-x-2.5">
+                        <span class="w-6 h-6 rounded bg-slate-800 flex items-center justify-center text-[10px] font-bold text-cyan-400 group-hover:bg-cyan-600 group-hover:text-white transition-colors">${eIdx + 1}</span>
+                        <span class="text-xs font-bold text-slate-200 group-hover:text-cyan-300 transition-colors">${ep.title}</span>
                     </div>
-                    <h3 className="text-sm font-semibold text-gray-200 truncate px-1">{title}</h3>
+                    <span class="text-[10px] bg-cyan-950/80 text-cyan-300 border border-cyan-800 px-2 py-0.5 rounded font-bold">Reproducir ▶</span>
                 </div>
-            );
-        };
+            `).join('');
+        }
 
-        const LockScreen = ({ onUnlock, correctCode, onCancel }) => {
-            const [input, setInput] = useState('');
-            const [error, setError] = useState(false);
-            const inputRef = useRef(null);
-            useEffect(() => { inputRef.current?.focus(); }, []);
+        function playMovie(item) {
+            isPlaying = true;
+            document.getElementById('grid-view').classList.add('hidden');
+            document.getElementById('player-view').classList.remove('hidden');
 
-            const submit = e => {
+            const playerContent = document.getElementById('player-content');
+            const badge = document.getElementById('playing-badge');
+            
+            badge.textContent = `Reproduciendo • ${item.title}`;
+            
+            playerContent.innerHTML = `
+                <iframe src="${item.url}" class="w-full h-full border-0 absolute inset-0" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+            `;
+            
+            const playerView = document.getElementById('player-view');
+            if (playerView.requestFullscreen) {
+                playerView.requestFullscreen().catch(() => {});
+            } else if (playerView.webkitRequestFullscreen) {
+                playerView.webkitRequestFullscreen();
+            }
+        }
+
+        function playEpisode(url, epTitle) {
+            isPlaying = true;
+            document.getElementById('detail-view').classList.add('hidden');
+            document.getElementById('player-view').classList.remove('hidden');
+
+            const playerContent = document.getElementById('player-content');
+            const badge = document.getElementById('playing-badge');
+            
+            badge.textContent = `Reproduciendo • ${epTitle}`;
+            
+            playerContent.innerHTML = `
+                <iframe src="${url}" class="w-full h-full border-0 absolute inset-0" allow="autoplay; fullscreen; encrypted-media; picture-in-picture" allowfullscreen="true" webkitallowfullscreen="true" mozallowfullscreen="true"></iframe>
+            `;
+            
+            const playerView = document.getElementById('player-view');
+            if (playerView.requestFullscreen) {
+                playerView.requestFullscreen().catch(() => {});
+            } else if (playerView.webkitRequestFullscreen) {
+                playerView.webkitRequestFullscreen();
+            }
+        }
+
+        function closePlayer() {
+            isPlaying = false;
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => {});
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            }
+            document.getElementById('player-view').classList.add('hidden');
+            document.getElementById('player-content').innerHTML = '';
+
+            if (currentSeries) {
+                document.getElementById('detail-view').classList.remove('hidden');
+            } else {
+                document.getElementById('grid-view').classList.remove('hidden');
+                renderGrid();
+            }
+        }
+
+        function handleVirtualKey(key) {
+            const items = APP_DATA[currentCat] || [];
+            const totalItems = items.length;
+
+            if (isPlaying) {
+                if (key === 'Enter' || key === 'ArrowLeft' || key === 'Escape') closePlayer();
+                return;
+            }
+
+            if (isDetailOpen) {
+                if (key === 'Escape' || key === 'ArrowLeft') closeDetail();
+                return;
+            }
+
+            if (totalItems === 0) return;
+
+            let numCols = 10;
+            if (window.innerWidth < 640) numCols = 4;
+            else if (window.innerWidth < 768) numCols = 6;
+            else if (window.innerWidth < 1024) numCols = 8;
+
+            if (key === 'ArrowRight') {
+                selectedIndex = (selectedIndex + 1) % totalItems;
+                renderGrid();
+            } else if (key === 'ArrowLeft') {
+                selectedIndex = (selectedIndex - 1 + totalItems) % totalItems;
+                renderGrid();
+            } else if (key === 'ArrowDown') {
+                if (selectedIndex + numCols < totalItems) {
+                    selectedIndex += numCols;
+                } else {
+                    const cats = ['movies2', 'movies', 'series'];
+                    const nextCat = cats[(cats.indexOf(currentCat) + 1) % cats.length];
+                    switchCategory(nextCat);
+                    return;
+                }
+                renderGrid();
+            } else if (key === 'ArrowUp') {
+                if (selectedIndex - numCols >= 0) {
+                    selectedIndex -= numCols;
+                } else {
+                    const cats = ['movies2', 'movies', 'series'];
+                    const prevCat = cats[(cats.indexOf(currentCat) - 1 + cats.length) % cats.length];
+                    switchCategory(prevCat);
+                    return;
+                }
+                renderGrid();
+            } else if (key === 'Enter') {
+                if (items[selectedIndex]) handleItemClick(items[selectedIndex].id);
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (isPlaying) {
+                if (e.key === 'Escape' || e.key === 'Backspace' || e.key === 'x') {
+                    closePlayer();
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            if (isDetailOpen) {
+                if (e.key === 'Escape' || e.key === 'Backspace') {
+                    closeDetail();
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            const items = APP_DATA[currentCat] || [];
+            let numCols = 10;
+            if (window.innerWidth < 640) numCols = 4;
+            else if (window.innerWidth < 768) numCols = 6;
+            else if (window.innerWidth < 1024) numCols = 8;
+
+            if (e.key === 'ArrowRight') {
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+                renderGrid();
                 e.preventDefault();
-                if (input === String(correctCode)) onUnlock();
-                else { setError(true); setInput(''); }
-            };
-
-            return (
-                <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center animate-fade-in">
-                    <div className="bg-[#151a24] p-8 rounded-2xl max-w-sm w-full text-center border border-white/10 shadow-2xl">
-                        <div className="mb-5 flex justify-center">
-                            <div className="p-4 bg-red-500/20 rounded-full text-red-500 border border-red-500/30">
-                                <Icon name="lock" size={32}/>
-                            </div>
-                        </div>
-                        <h2 className="text-xl font-bold mb-1">Contenido Protegido</h2>
-                        <p className="text-sm text-gray-400 mb-6">Ingresa el PIN con el control remoto</p>
-                        <form onSubmit={submit}>
-                            <input
-                                ref={inputRef}
-                                type="password"
-                                maxLength={6}
-                                inputMode="numeric"
-                                className="focusable w-full bg-black/60 border border-white/15 rounded-xl px-4 py-4 text-center text-3xl tracking-[0.6em] text-white mb-3"
-                                value={input}
-                                onChange={e => { setInput(e.target.value); setError(false); }}
-                                placeholder="••••"
-                            />
-                            {error && <p className="text-red-500 text-sm mb-3 font-bold">Código incorrecto</p>}
-                            <div className="flex gap-3 mt-4">
-                                <button type="button" onClick={onCancel} className="focusable flex-1 py-3 rounded-xl border border-white/10 text-gray-300 text-sm font-medium">
-                                    Cancelar
-                                </button>
-                                <button type="submit" className="focusable flex-1 py-3 rounded-xl bg-[#E50914] text-white font-bold text-sm">
-                                    Acceder
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            );
-        };
-
-        // ========== APP ==========
-        const App = () => {
-            const [showIntro, setShowIntro] = useState(true);
-            const [activeTab, setActiveTab] = useState('movies');
-            const [content, setContent] = useState({ tv: [], series: [], movies: [], animados: [] });
-            const [search, setSearch] = useState('');
-            const [selectedItem, setSelectedItem] = useState(null);
-            const [selectedEpisode, setSelectedEpisode] = useState(null);
-            const [isLocked, setIsLocked] = useState(false);
-            const [favorites, setFavorites] = useState([]);
-            const [loading, setLoading] = useState(true);
-            const [expandedSeason, setExpandedSeason] = useState(0);
-            const [showQrModal, setShowQrModal] = useState(false);
-            const [tvRefresh, setTvRefresh] = useState(0);
-            const [tvGroup, setTvGroup] = useState('ALL');
-
-            const tvPlayerRef = useRef(null);
-            const gridRef = useRef(null);
-            const searchRef = useRef(null);
-
-            const navTabs = [
-                { id: 'movies', icon: 'clapperboard', label: 'Cine' },
-                { id: 'series', icon: 'film', label: 'Series' },
-                { id: 'animados', icon: 'smile', label: 'Animados' },
-                { id: 'tv', icon: 'tv', label: 'TV' },
-                { id: 'favorites', icon: 'heart', label: 'Favs' }
-            ];
-
-            // Detect mouse usage → show cursor
-            useEffect(() => {
-                const onMove = () => document.body.classList.add('mouse-active');
-                const onKey = () => document.body.classList.remove('mouse-active');
-                window.addEventListener('mousemove', onMove);
-                window.addEventListener('keydown', onKey);
-                return () => {
-                    window.removeEventListener('mousemove', onMove);
-                    window.removeEventListener('keydown', onKey);
-                };
-            }, []);
-
-            // Global Back / Escape key
-            useEffect(() => {
-                const onKey = (e) => {
-                    if (e.key === 'Escape' || e.key === 'Backspace') {
-                        if (showQrModal) { setShowQrModal(false); return; }
-                        if (selectedItem && selectedItem.type !== 'tv') {
-                            setSelectedItem(null);
-                            setIsLocked(false);
-                            e.preventDefault();
-                        }
-                    }
-                };
-                window.addEventListener('keydown', onKey);
-                return () => window.removeEventListener('keydown', onKey);
-            }, [selectedItem, showQrModal]);
-
-            // Load data
-            useEffect(() => {
-                (async () => {
-                    setLoading(true);
-                    try {
-                        const [tvRaw, movRaw, serRaw, aniRaw] = await Promise.all([
-                            fetchSmart(URLS.TV, RAW.TV, false),
-                            fetchSmart(URLS.MOVIES, RAW.MOVIES, true),
-                            fetchSmart(URLS.SERIES, RAW.SERIES, true),
-                            fetchSmart(URLS.ANIMADOS, RAW.ANIMADOS, true)
-                        ]);
-
-                        const tv = tvRaw ? parseM3U(tvRaw) : [];
-
-                        const mapMovies = (raw) => {
-                            const arr = Array.isArray(raw) ? raw : (raw?.peliculas || raw?.content || []);
-                            return arr.map((m, i) => ({
-                                ...m, id: `mov-${i}`, type: 'movies',
-                                title: m.titulo || m.title || m.name,
-                                description: m.descripcion || m.sinopsis || m.plot,
-                                image: m.imagen || m.poster || m.image,
-                                url: convertUrl(m.urlDrive || m.url)
-                            }));
-                        };
-
-                        const mapSeries = (raw, type) => {
-                            const arr = Array.isArray(raw) ? raw : (raw?.series || raw?.animados || []);
-                            return arr.map((s, i) => ({
-                                ...s, id: `${type}-${i}`, type,
-                                title: s.tituloSerie || s.titulo || s.title || s.name,
-                                description: s.descripcion || s.sinopsis,
-                                image: s.imagen || s.poster || s.image,
-                                url: convertUrl(s.urlDrive || s.url),
-                                seasons: (s.temporadas || []).map((t, ti) => ({
-                                    seasonNumber: t.numeroTemporada || ti + 1,
-                                    episodes: (t.episodios || []).map((ep, ei) => ({
-                                        id: `ep-${i}-${ti}-${ei}`,
-                                        title: ep.tituloEpisodio || ep.titulo || `Episodio ${ei + 1}`,
-                                        url: convertUrl(ep.urlDrive || ep.url)
-                                    }))
-                                }))
-                            }));
-                        };
-
-                        setContent({
-                            tv,
-                            movies: movRaw ? mapMovies(movRaw) : [],
-                            series: serRaw ? mapSeries(serRaw, 'series') : [],
-                            animados: aniRaw ? mapSeries(aniRaw, 'animados') : []
-                        });
-                    } catch (err) {
-                        console.error(err);
-                    } finally {
-                        setLoading(false);
-                    }
-                })();
-
-                const favs = safeStorage.getItem('magistube_favs');
-                if (favs) try { setFavorites(JSON.parse(favs)); } catch {}
-            }, []);
-
-            // Auto-select first TV channel
-            useEffect(() => {
-                if (activeTab === 'tv' && content.tv.length && (!selectedItem || selectedItem.type !== 'tv')) {
-                    const pref = content.tv.find(c => /telerred|tele.?red/i.test(c.title)) || content.tv[0];
-                    if (pref) { setSelectedItem(pref); setIsLocked(false); }
+            } else if (e.key === 'ArrowLeft') {
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+                renderGrid();
+                e.preventDefault();
+            } else if (e.key === 'ArrowDown') {
+                if (selectedIndex + numCols < items.length) {
+                    selectedIndex += numCols;
+                    renderGrid();
+                } else {
+                    const cats = ['movies2', 'movies', 'series'];
+                    const nextCat = cats[(cats.indexOf(currentCat) + 1) % cats.length];
+                    switchCategory(nextCat);
                 }
-            }, [activeTab, content.tv]);
-
-            // Focus first card when entering grid
-            useEffect(() => {
-                if (!selectedItem && activeTab !== 'tv' && !loading) {
-                    const t = setTimeout(() => {
-                        const first = gridRef.current?.querySelector('[tabindex="0"]');
-                        first?.focus();
-                    }, 150);
-                    return () => clearTimeout(t);
+                e.preventDefault();
+            } else if (e.key === 'ArrowUp') {
+                if (selectedIndex - numCols >= 0) {
+                    selectedIndex -= numCols;
+                    renderGrid();
+                } else {
+                    const cats = ['movies2', 'movies', 'series'];
+                    const prevCat = cats[(cats.indexOf(currentCat) - 1 + cats.length) % cats.length];
+                    switchCategory(prevCat);
                 }
-            }, [activeTab, loading, selectedItem, search]);
+                e.preventDefault();
+            } else if (e.key === 'Enter') {
+                if (items[selectedIndex]) handleItemClick(items[selectedIndex].id);
+                e.preventDefault();
+            }
+        });
 
-            const tvGroups = useMemo(() => {
-                const s = new Set(content.tv.map(c => c.group || 'General'));
-                return ['ALL', ...[...s].sort()];
-            }, [content.tv]);
-
-            const toggleFavorite = useCallback((item) => {
-                const id = item.id || item.title;
-                setFavorites(prev => {
-                    const next = prev.some(f => (f.id || f.title) === id)
-                        ? prev.filter(f => (f.id || f.title) !== id)
-                        : [item, ...prev];
-                    safeStorage.setItem('magistube_favs', JSON.stringify(next));
-                    return next;
-                });
-            }, []);
-
-            const getList = () => {
-                if (activeTab === 'favorites') return favorites;
-                let list = content[activeTab] || [];
-                if (search.trim()) {
-                    const q = search.toLowerCase();
-                    list = list.filter(i => (i.title || i.name || '').toLowerCase().includes(q));
-                }
-                return list;
-            };
-
-            const displayed = getList();
-
-            const handlePlay = (item) => {
-                const code = item.codigo || item.password || item.pin;
-                setSelectedItem(item);
-                setIsLocked(!!code);
-                setExpandedSeason(0);
-                if (item.type === 'series' || item.type === 'animados') {
-                    setSelectedEpisode(item.seasons?.[0]?.episodes?.[0] || null);
-                } else setSelectedEpisode(null);
-            };
-
-            const handleTab = (tab) => {
-                setActiveTab(tab.id);
-                setSearch('');
-                setIsLocked(false);
-                if (tab.id !== 'tv') setSelectedItem(null);
-            };
-
-            const toggleFs = () => {
-                const el = tvPlayerRef.current;
-                if (!el) return;
-                if (document.fullscreenElement) document.exitFullscreen?.();
-                else el.requestFullscreen?.() || el.webkitRequestFullscreen?.();
-            };
-
-            if (showIntro) return <IntroScreen onEnter={() => setShowIntro(false)}/>;
-
-            // ========== RENDER ==========
-            return (
-                <div className="tv-layout">
-                    {/* ===== SIDEBAR (siempre visible en TV) ===== */}
-                    <aside className="tv-sidebar">
-                        <div
-                            tabIndex={0}
-                            className="focusable mb-8 p-3 bg-[#E50914] rounded-2xl shadow-lg shadow-red-900/40"
-                            onClick={() => handleTab(navTabs[0])}
-                            onKeyDown={e => { if (e.key === 'Enter') handleTab(navTabs[0]); }}
-                        >
-                            <Icon fill="white" name="play" size={26} className="text-white"/>
-                        </div>
-
-                        <nav className="flex flex-col gap-1 w-full flex-1">
-                            {navTabs.map(tab => (
-                                <button
-                                    key={tab.id}
-                                    tabIndex={0}
-                                    onClick={() => handleTab(tab)}
-                                    className={`nav-item focusable flex flex-col items-center gap-1.5 w-full py-3.5 transition-all border-l-4 ${
-                                        activeTab === tab.id
-                                            ? 'text-[#E50914] bg-white/5 border-[#E50914] font-semibold'
-                                            : 'text-gray-500 border-transparent hover:text-white'
-                                    }`}
-                                >
-                                    <Icon name={tab.icon} size={22}/>
-                                    <span className="text-[11px] tracking-wide">{tab.label}</span>
-                                </button>
-                            ))}
-                        </nav>
-
-                        <button
-                            tabIndex={0}
-                            onClick={() => setShowQrModal(true)}
-                            className="focusable mt-auto mb-4 p-2.5 bg-[#151a24] rounded-xl border border-white/10"
-                            title="QR"
-                        >
-                            <Icon name="qr" size={22} className="text-gray-400"/>
-                        </button>
-                    </aside>
-
-                    {/* ===== MAIN ===== */}
-                    <main className="tv-main">
-
-                        {/* FAVORITOS */}
-                        {activeTab === 'favorites' && !selectedItem && (
-                            <div className="flex-1 overflow-y-auto tv-safe animate-fade-in">
-                                <div className="flex items-center gap-4 mb-8">
-                                    <div className="p-3 bg-[#E50914]/15 rounded-xl text-[#E50914]">
-                                        <Icon fill="currentColor" name="heart" size={24}/>
-                                    </div>
-                                    <h2 className="text-2xl font-bold">Favoritos</h2>
-                                    <span className="text-gray-500 text-sm ml-2">{favorites.length}</span>
-                                </div>
-                                {favorites.length === 0 ? (
-                                    <div className="text-center py-32 text-gray-500">
-                                        <Icon name="heart" size={48} className="mx-auto mb-4 opacity-25"/>
-                                        <p>No hay favoritos aún</p>
-                                    </div>
-                                ) : (
-                                    <div className="tv-grid" ref={gridRef}>
-                                        {favorites.map((item, i) => (
-                                            <Card key={item.id || i} item={item} isFavorite onClick={handlePlay} onToggleFavorite={toggleFavorite}/>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* TV EN VIVO */}
-                        {(activeTab === 'tv' || (selectedItem?.type === 'tv')) && (
-                            <div className="flex h-full overflow-hidden">
-                                {/* Lista canales */}
-                                <div className="w-[340px] flex-shrink-0 bg-[#0c0e14] border-r border-white/5 flex flex-col">
-                                    <div className="p-4 border-b border-white/5 space-y-3">
-                                        <div className="flex items-center justify-between">
-                                            <h2 className="font-bold text-base flex items-center gap-2">
-                                                <Icon name="tv" size={18} className="text-[#E50914]"/> Canales
-                                            </h2>
-                                            <span className="text-xs text-gray-500 bg-white/5 px-2.5 py-1 rounded-full">{content.tv.length}</span>
-                                        </div>
-                                        <div className="relative">
-                                            <input
-                                                ref={searchRef}
-                                                type="text"
-                                                placeholder="Buscar canal..."
-                                                className="focusable w-full bg-[#0a0c10] border border-white/10 rounded-xl px-4 py-3 text-sm pl-10"
-                                                value={search}
-                                                onChange={e => setSearch(e.target.value)}
-                                            />
-                                            <Icon className="absolute left-3.5 top-3.5 text-gray-500" name="search" size={16}/>
-                                        </div>
-                                        <select
-                                            value={tvGroup}
-                                            onChange={e => setTvGroup(e.target.value)}
-                                            className="focusable w-full bg-[#0a0c10] border border-white/10 rounded-xl px-3 py-2.5 text-sm text-gray-300"
-                                        >
-                                            <option value="ALL">Todas las categorías</option>
-                                            {tvGroups.filter(g => g !== 'ALL').map((g, i) => (
-                                                <option key={i} value={g}>{g}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="flex-1 overflow-y-auto p-2 space-y-1">
-                                        {content.tv
-                                            .filter(c => {
-                                                const ms = !search || c.title.toLowerCase().includes(search.toLowerCase());
-                                                const mg = tvGroup === 'ALL' || c.group === tvGroup;
-                                                return ms && mg;
-                                            })
-                                            .map(ch => {
-                                                const active = selectedItem?.id === ch.id;
-                                                const fav = favorites.some(f => f.id === ch.id);
-                                                return (
-                                                    <div
-                                                        key={ch.id}
-                                                        tabIndex={0}
-                                                        className={`channel-row focusable flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all ${
-                                                            active
-                                                                ? 'bg-[#E50914]/18 border-[#E50914] border-l-4'
-                                                                : 'bg-[#151a24]/50 border-white/5'
-                                                        }`}
-                                                        onClick={() => handlePlay(ch)}
-                                                        onKeyDown={e => { if (e.key === 'Enter') handlePlay(ch); }}
-                                                    >
-                                                        <div className="w-14 h-10 rounded-lg bg-black/80 flex items-center justify-center overflow-hidden border border-white/10 flex-shrink-0 relative">
-                                                            {ch.image
-                                                                ? <img src={ch.image} alt="" className="w-full h-full object-contain p-0.5" onError={e => e.target.style.display='none'}/>
-                                                                : <Icon name="tv" size={16} className="text-gray-600"/>}
-                                                            {active && <div className="absolute inset-0 bg-[#E50914]/25 flex items-center justify-center"><div className="w-2 h-2 rounded-full bg-[#E50914]" style={{animation:'pulse 1.4s infinite'}}/></div>}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <h4 className={`text-sm font-bold truncate ${active ? 'text-[#E50914]' : ''}`}>{ch.title}</h4>
-                                                            <span className="text-[11px] text-gray-500">{ch.group}</span>
-                                                        </div>
-                                                        <button
-                                                            tabIndex={-1}
-                                                            onClick={e => { e.stopPropagation(); toggleFavorite(ch); }}
-                                                            className="p-1.5"
-                                                        >
-                                                            <Icon name="heart" size={15} fill={fav ? '#E50914' : 'none'} className={fav ? 'text-[#E50914]' : 'text-gray-600'}/>
-                                                        </button>
-                                                    </div>
-                                                );
-                                            })}
-                                    </div>
-                                </div>
-
-                                {/* Player */}
-                                <div className="flex-1 flex flex-col bg-[#05070a]">
-                                    <div className="flex-1 relative player-box" ref={tvPlayerRef}>
-                                        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-black/60 backdrop-blur px-3.5 py-1.5 rounded-full border border-white/10 pointer-events-none">
-                                            <div className="w-2 h-2 rounded-full bg-[#E50914]" style={{animation:'pulse 1.4s infinite'}}/>
-                                            <span className="text-xs font-black">MAGIS<span className="text-[#E50914]">TV</span></span>
-                                        </div>
-                                        {selectedItem?.type === 'tv' ? (
-                                            <iframe key={tvRefresh} src={selectedItem.url} className="absolute inset-0 w-full h-full"
-                                                    allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen/>
-                                        ) : (
-                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center gap-3">
-                                                <Icon name="tv" size={48} className="text-[#E50914] opacity-60"/>
-                                                <p className="text-base font-semibold">Selecciona un canal</p>
-                                                <p className="text-sm text-gray-500">Usa ↑↓ en el control remoto</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="bg-[#0c0e14] border-t border-white/5 px-5 py-3.5 flex items-center justify-between">
-                                        <div className="flex items-center gap-3.5 min-w-0">
-                                            {selectedItem?.type === 'tv' ? (
-                                                <>
-                                                    <div className="w-10 h-10 rounded-lg bg-black border border-white/10 overflow-hidden flex-shrink-0">
-                                                        {selectedItem.image
-                                                            ? <img src={selectedItem.image} alt="" className="w-full h-full object-contain"/>
-                                                            : <div className="w-full h-full flex items-center justify-center"><Icon name="tv" size={16} className="text-gray-500"/></div>}
-                                                    </div>
-                                                    <div className="truncate">
-                                                        <h3 className="text-sm font-bold truncate">{selectedItem.title}</h3>
-                                                        <span className="text-xs text-gray-500">{selectedItem.group}</span>
-                                                    </div>
-                                                </>
-                                            ) : <span className="text-sm text-gray-500">Sin canal</span>}
-                                        </div>
-                                        {selectedItem?.type === 'tv' && (
-                                            <div className="flex items-center gap-2">
-                                                <button tabIndex={0} onClick={() => setTvRefresh(n => n+1)} className="focusable p-3 rounded-xl bg-blue-500/15 text-blue-400" title="Refrescar">
-                                                    <Icon name="refresh" size={18}/>
-                                                </button>
-                                                <button tabIndex={0} onClick={() => toggleFavorite(selectedItem)} className="focusable p-3 rounded-xl bg-white/5">
-                                                    <Icon name="heart" size={18}
-                                                          fill={favorites.some(f => f.id === selectedItem.id) ? '#E50914' : 'none'}
-                                                          className={favorites.some(f => f.id === selectedItem.id) ? 'text-[#E50914]' : 'text-gray-300'}/>
-                                                </button>
-                                                <button tabIndex={0} onClick={toggleFs} className="focusable p-3 rounded-xl bg-white/5" title="Pantalla completa">
-                                                    <Icon name="maximize" size={18}/>
-                                                </button>
-                                                <button tabIndex={0} onClick={() => setSelectedItem(null)} className="focusable p-3 rounded-xl bg-red-500/15 text-red-400">
-                                                    <Icon name="x" size={18} />
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* DETALLE / PLAYER */}
-                        {selectedItem && selectedItem.type !== 'tv' && (
-                            <div className="flex flex-col h-full animate-fade-in">
-                                <div className="relative w-full h-[55vh] bg-black player-box flex-shrink-0">
-                                    <button
-                                        tabIndex={0}
-                                        onClick={() => { setSelectedItem(null); setIsLocked(false); }}
-                                        className="focusable absolute top-4 left-4 z-30 bg-black/70 text-white px-5 py-2.5 rounded-full flex items-center gap-2 text-sm border border-white/10"
-                                    >
-                                        <Icon name="arrowLeft" size={18}/><span>Volver</span>
-                                    </button>
-                                    {isLocked ? (
-                                        <LockScreen
-                                            correctCode={selectedItem.codigo || selectedItem.password || selectedItem.pin}
-                                            onUnlock={() => setIsLocked(false)}
-                                            onCancel={() => { setSelectedItem(null); setIsLocked(false); }}
-                                        />
-                                    ) : (
-                                        <iframe
-                                            src={convertUrl(
-                                                (selectedItem.type === 'series' || selectedItem.type === 'animados') && selectedEpisode
-                                                    ? selectedEpisode.url : selectedItem.url
-                                            )}
-                                            className="absolute inset-0 w-full h-full"
-                                            allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowFullScreen
-                                        />
-                                    )}
-                                </div>
-
-                                {!isLocked && (
-                                    <div className="flex-1 overflow-y-auto p-6 flex gap-8">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-start justify-between gap-4 mb-3">
-                                                <div>
-                                                    <h1 className="text-2xl font-bold mb-1.5">{selectedItem.title || selectedItem.titulo}</h1>
-                                                    <span className="text-xs bg-[#1f2937] px-3 py-1 rounded-md uppercase tracking-wide">{selectedItem.type}</span>
-                                                </div>
-                                                <button tabIndex={0} onClick={() => toggleFavorite(selectedItem)} className="focusable p-3 bg-[#1f2937] rounded-full flex-shrink-0">
-                                                    <Icon name="heart" size={22}
-                                                          fill={favorites.some(f => (f.id||f.title)===(selectedItem.id||selectedItem.title)) ? '#E50914' : 'none'}
-                                                          className={favorites.some(f => (f.id||f.title)===(selectedItem.id||selectedItem.title)) ? 'text-[#E50914]' : 'text-gray-400'}/>
-                                                </button>
-                                            </div>
-                                            <p className="text-gray-400 text-sm leading-relaxed max-w-2xl">
-                                                {selectedItem.description || selectedItem.descripcion || selectedItem.sinopsis || 'Sin descripción.'}
-                                            </p>
-                                        </div>
-
-                                        {(selectedItem.type === 'series' || selectedItem.type === 'animados') && selectedItem.seasons?.length > 0 && (
-                                            <div className="w-[360px] flex-shrink-0 bg-[#151a24] border border-white/8 rounded-2xl p-4 flex flex-col max-h-[400px]">
-                                                <h3 className="font-bold text-sm mb-3">Episodios</h3>
-                                                <div className="flex gap-2 mb-3 overflow-x-auto no-scrollbar pb-1">
-                                                    {selectedItem.seasons.map((s, i) => (
-                                                        <button key={i} tabIndex={0}
-                                                            onClick={() => setExpandedSeason(i)}
-                                                            className={`focusable px-4 py-2 rounded-lg text-xs font-bold whitespace-nowrap ${
-                                                                expandedSeason === i ? 'bg-[#E50914] text-white' : 'bg-black/40 text-gray-400'
-                                                            }`}>
-                                                            T{s.seasonNumber}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                                <div className="flex-1 overflow-y-auto space-y-1">
-                                                    {selectedItem.seasons[expandedSeason]?.episodes?.map((ep, i) => (
-                                                        <div key={i} tabIndex={0}
-                                                            onClick={() => setSelectedEpisode(ep)}
-                                                            onKeyDown={e => { if (e.key === 'Enter') setSelectedEpisode(ep); }}
-                                                            className={`ep-row focusable p-3 rounded-xl flex items-center justify-between text-sm border ${
-                                                                selectedEpisode?.url === ep.url
-                                                                    ? 'bg-[#E50914]/20 border-[#E50914]/40 text-white'
-                                                                    : 'border-transparent text-gray-300'
-                                                            }`}>
-                                                            <div className="flex items-center gap-2.5 truncate">
-                                                                {selectedEpisode?.url === ep.url ? (
-                                                                    <div className="flex items-end h-3.5 gap-[2px] w-5 justify-center">
-                                                                        <div className="bar h-full"/><div className="bar h-full"/><div className="bar h-full"/><div className="bar h-full"/>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-gray-600 font-bold text-xs w-5 text-center">{i+1}</span>
-                                                                )}
-                                                                <span className="truncate">{ep.title}</span>
-                                                            </div>
-                                                            <Icon name="play" size={14}
-                                                                  fill={selectedEpisode?.url === ep.url ? '#E50914' : 'none'}
-                                                                  className={selectedEpisode?.url === ep.url ? 'text-[#E50914]' : 'text-gray-600'}/>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* GRID CINE / SERIES / ANIMADOS */}
-                        {!selectedItem && activeTab !== 'tv' && activeTab !== 'favorites' && (
-                            <div className="flex flex-col h-full">
-                                <div className="flex-shrink-0 px-6 pt-5 pb-3 flex items-center gap-4 border-b border-white/5">
-                                    <div className="flex-1 max-w-xl relative">
-                                        <Icon className="absolute left-4 top-3.5 text-gray-500" name="search" size={18}/>
-                                        <input
-                                            type="text"
-                                            placeholder={`Buscar en ${activeTab === 'movies' ? 'Cine' : activeTab}...`}
-                                            className="focusable w-full bg-[#151a24] border border-white/10 rounded-full pl-12 pr-4 py-3 text-sm"
-                                            value={search}
-                                            onChange={e => setSearch(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-1.5 h-6 bg-[#E50914] rounded-full"/>
-                                        <h2 className="text-lg font-bold uppercase tracking-wide">
-                                            {activeTab === 'movies' ? 'Cine' : activeTab === 'series' ? 'Series' : 'Animados'}
-                                        </h2>
-                                        {!loading && <span className="text-gray-600 text-sm">({displayed.length})</span>}
-                                    </div>
-                                </div>
-
-                                <div className="flex-1 overflow-y-auto px-6 py-5" ref={gridRef}>
-                                    {loading ? (
-                                        <div className="flex justify-center py-24">
-                                            <div className="w-12 h-12 border-4 border-[#E50914] border-t-transparent rounded-full" style={{animation:'spin .8s linear infinite'}}/>
-                                        </div>
-                                    ) : displayed.length === 0 ? (
-                                        <div className="text-center py-24 text-gray-500">
-                                            <p className="text-base">No hay contenido</p>
-                                            {search && <p className="text-sm mt-2">Prueba otra búsqueda</p>}
-                                        </div>
-                                    ) : (
-                                        <div className="tv-grid animate-slide-up">
-                                            {displayed.map((item, i) => (
-                                                <Card key={item.id || i} item={item} onClick={handlePlay}
-                                                      isFavorite={favorites.some(f => (f.id||f.title)===(item.id||item.title))}
-                                                      onToggleFavorite={toggleFavorite}/>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    {/* QR Modal */}
-                    {showQrModal && (
-                        <div className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center animate-fade-in">
-                            <div className="bg-[#151a24] border border-white/10 rounded-2xl p-8 max-w-sm w-full text-center space-y-5 shadow-2xl">
-                                <p className="text-xs font-black uppercase text-[#E50914] tracking-widest">Escanea y Comparte</p>
-                                <div className="bg-white p-4 rounded-xl inline-block">
-                                    <img src="./mi-qr-pro.png" alt="QR" className="w-52 h-52 object-contain"
-                                         onError={e => { e.target.src = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=' + encodeURIComponent(location.href); }}/>
-                                </div>
-                                <h3 className="font-extrabold text-lg">MAGIS <span className="text-[#E50914]">Tube</span></h3>
-                                <button tabIndex={0} onClick={() => setShowQrModal(false)}
-                                        className="focusable w-full bg-[#E50914] text-white py-3.5 rounded-xl font-bold text-sm">
-                                    Cerrar (OK / Back)
-                                </button>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+        // Inicialización
+        fetchIPTVData();
     </script>
 </body>
 </html>
