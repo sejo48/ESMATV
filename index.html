@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Boxplaytv - Smart TV IPTV Edition (Estrenos 2026 & Más)</title>
+    <title>Boxplaytv - Smart TV IPTV Edition (Estrenos 2026, Películas & Series)</title>
     
     <!-- Tailwind CSS & Google Fonts -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -74,7 +74,7 @@
         </a>
     </div>
 
-    <!-- Header de la Smart TV con botones de categoría siempre accesibles -->
+    <!-- Header de la Smart TV con botones de categoría siempre accesibles desde cualquier posición -->
     <header class="flex items-center justify-between mb-2.5 pb-2 border-b border-slate-800/80 shrink-0">
         <div class="flex items-center space-x-2.5 cursor-pointer" onclick="switchCategory('movies2')">
             <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 to-teal-500 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]">
@@ -86,7 +86,7 @@
             </div>
         </div>
 
-        <!-- Selector de Categorías / Listas (Siempre funcional desde cualquier sección) -->
+        <!-- Selector de Categorías Superior (Accesible instantáneamente desde cualquier lugar) -->
         <div class="flex items-center space-x-2" id="categories-bar">
             <button onclick="switchCategory('movies2')" id="cat-movies2" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-cyan-500/20 text-cyan-300 border border-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.4)] transition-all cursor-pointer">Estrenos 2026</button>
             <button onclick="switchCategory('movies')" id="cat-movies" class="px-2.5 py-1 rounded-lg font-bold text-[11px] bg-slate-900 text-slate-400 border border-slate-800 transition-all cursor-pointer">Películas</button>
@@ -111,13 +111,13 @@
                 </div>
             </div>
 
-            <!-- Grid optimizado con más columnas para portadas pequeñas y compactas -->
+            <!-- Grid optimizado con columnas para portadas pequeñas y compactas -->
             <div class="flex-1 overflow-y-auto px-1 py-1 pr-2" id="grid-scroll-area">
                 <div id="items-grid" class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2 pb-4"></div>
             </div>
         </div>
 
-        <!-- Vista de Detalle de Serie (Temporadas y Episodios) -->
+        <!-- Vista de Detalle de Serie (Temporadas y Episodios completos) -->
         <div id="detail-view" class="hidden flex-1 flex flex-col overflow-hidden bg-slate-950/90 rounded-xl border border-cyan-500/30 p-4 relative">
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
                 <button onclick="closeDetail()" class="bg-slate-900 hover:bg-cyan-600 text-white px-3 py-1 rounded-lg border border-slate-800 font-bold text-xs transition-all cursor-pointer flex items-center space-x-1.5">
@@ -283,25 +283,46 @@
                     desc: m.descripcion || m.sinopsis || m.plot || 'Película IPTV.'
                 }));
 
-                // Cargar Series (Mapeo completo de Temporadas y Episodios)
+                // Cargar Series (Mapeo completo robusto de Temporadas y Episodios)
                 const res3 = await fetch(URLS.series);
                 const data3 = await res3.json();
                 const raw3 = Array.isArray(data3) ? data3 : (data3.series || []);
-                APP_DATA.series = raw3.map((s, idx) => ({
-                    id: `s-${idx}`,
-                    type: 'serie',
-                    title: s.tituloSerie || s.titulo || s.title || s.name || 'Serie',
-                    image: s.imagen || s.poster || s.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80',
-                    desc: s.descripcion || s.sinopsis || 'Serie IPTV.',
-                    seasons: (s.temporadas || []).map((t, tIdx) => ({
-                        seasonNumber: t.numeroTemporada || (tIdx + 1),
-                        episodes: (t.episodios || []).map((ep, eIdx) => ({
+                APP_DATA.series = raw3.map((s, idx) => {
+                    const rawSeasons = s.temporadas || s.seasons || [];
+                    const seasonsMapped = rawSeasons.map((t, tIdx) => {
+                        const rawEpisodes = t.episodios || t.episodes || [];
+                        const episodesMapped = rawEpisodes.map((ep, eIdx) => ({
                             id: `ep-${idx}-${tIdx}-${eIdx}`,
-                            title: ep.tituloEpisodio || ep.titulo || `Episodio ${eIdx + 1}`,
-                            url: convertUrl(ep.urlDrive || ep.url || 'https://www.youtube.com/embed/dQw4w9WgXcQ')
-                        }))
-                    }))
-                }));
+                            title: ep.tituloEpisodio || ep.titulo || ep.title || `Episodio ${eIdx + 1}`,
+                            url: convertUrl(ep.urlDrive || ep.url || ep.stream || 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+                        }));
+                        return {
+                            seasonNumber: t.numeroTemporada || t.seasonNumber || (tIdx + 1),
+                            episodes: episodesMapped
+                        };
+                    });
+
+                    // Fallback si la serie no tuviera temporadas explícitas
+                    if (seasonsMapped.length === 0) {
+                        seasonsMapped.push({
+                            seasonNumber: 1,
+                            episodes: [{
+                                id: `ep-${idx}-0-0`,
+                                title: 'Episodio 1',
+                                url: convertUrl(s.url || s.urlDrive || 'https://www.youtube.com/embed/dQw4w9WgXcQ')
+                            }]
+                        });
+                    }
+
+                    return {
+                        id: `s-${idx}`,
+                        type: 'serie',
+                        title: s.tituloSerie || s.titulo || s.title || s.name || 'Serie',
+                        image: s.imagen || s.poster || s.image || 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=300&auto=format&fit=crop&q=80',
+                        desc: s.descripcion || s.sinopsis || 'Serie IPTV.',
+                        seasons: seasonsMapped
+                    };
+                });
 
                 document.getElementById('loading-indicator').classList.remove('animate-ping');
                 updateCategoryUI();
@@ -317,7 +338,7 @@
             }
         }
 
-        // Cambio instantáneo de categoría desde cualquier parte de la app
+        // Cambio instantáneo de categoría desde cualquier parte de la app con reseteo de vistas
         function switchCategory(cat) {
             currentCat = cat;
             selectedIndex = 0;
